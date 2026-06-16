@@ -25,7 +25,7 @@ spl-visualizer/
 │   ├── validation.js             # Checks generated View.tsx (exports, blocked APIs, TS parse)
 │   ├── store.js                  # SQLite persistence for jobs and uploaded files
 │   ├── events.js                 # SSE event helpers for real-time progress
-│   └── config.js                 # Paths, env vars, model config (~/.pi/agent/models.json)
+│   └── config.js                 # Paths, env vars, model config (env vars)
 │
 ├── data/                         # Runtime only (gitignored)
 │   └── generated-views.sqlite    # Job metadata + uploaded files
@@ -172,29 +172,20 @@ Notes:
 - `Dockerfile` installs project dev dependencies intentionally, because generated configurators are Vite-built at runtime.
 - `opencode-ai` is installed globally in the image. Pin it with `OPENCODE_VERSION=1.17.7 docker compose build` if `latest` gets spicy.
 - Runtime state is stored in the named volumes mounted at `/app/data`, `/app/generated-workspaces`, and `/app/generated-dist`.
-- Instead of putting VLLM settings in `.env`, you can mount `~/.pi/agent/models.json` to `/home/node/.pi/agent/models.json`; see the commented line in `docker-compose.yml`.
+
 
 
 ---
 
 ## AI Configuration
 
-The worker runs `opencode run` once per generation job. Model/provider settings are read from `~/.pi/agent/models.json`:
+The worker runs `opencode run` once per generation job. Model/provider settings are configured via environment variables in `.env`:
 
-```json
-{
-  "providers": {
-    "llm2go": {
-      "baseUrl": "https://vllm-api.example/v1",
-      "apiKey": "...",
-      "models": [{ "id": "model-id" }]
-    }
-  },
-  "spawnModels": {
-    "provider": "llm2go",
-    "complex": "model-id"
-  }
-}
+```bash
+VLLM_BASE_URL=https://vllm-api.scch.at/v1
+VLLM_MODEL='Qwen/Qwen3.6-27B-FP8 - Reasoning OFF'
+VLLM_API_KEY=your-api-key
+PI_MODEL_PROVIDER=llm2go
 ```
 
 The API key is **never** written into `opencode.json` — it's referenced as `{env:VLLM_API_KEY}` and passed only through the child process environment.

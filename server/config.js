@@ -1,5 +1,3 @@
-import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -13,8 +11,9 @@ export const MAIN_DIST_DIR = path.resolve(APP_ROOT, 'dist');
 export const DATA_DIR = path.resolve(process.env.GENERATED_DATA_DIR ?? path.join(APP_ROOT, 'data'));
 export const WORKSPACES_DIR = path.resolve(process.env.GENERATED_WORKSPACES_DIR ?? path.join(APP_ROOT, 'generated-workspaces'));
 export const DIST_DIR = path.resolve(process.env.GENERATED_DIST_DIR ?? path.join(APP_ROOT, 'generated-dist'));
+export const EXAMPLES_DIR = path.resolve(process.env.GENERATED_EXAMPLES_DIR ?? path.join(APP_ROOT, 'examples'));
 export const VIEW_TTL_HOURS = Number.parseInt(process.env.GENERATED_VIEW_TTL_HOURS ?? '168', 10);
-export const ID_PATTERN = /^[a-zA-Z0-9_-]{8,64}$/;
+export const ID_PATTERN = /^[a-zA-Z0-9_-]{3,64}$/;
 export const MAX_PROMPT_CHARS = 12_000;
 export const MAX_FILE_BYTES = 512 * 1024;
 export const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
@@ -23,12 +22,9 @@ export function publicUrlFor(id) {
   return `/gen/${id}`;
 }
 // --- opencode (AI agent) configuration ---
-export const PI_MODELS_CONFIG = path.resolve(
-  process.env.PI_MODELS_CONFIG ?? path.join(os.homedir(), '.pi', 'agent', 'models.json'),
-);
+// All vLLM / AI provider settings are read from environment variables only.
+// See .env.example for the required values.
 export const PI_MODEL_PROVIDER = process.env.PI_MODEL_PROVIDER ?? 'llm2go';
-const piModelConfig = readPiModelConfig(PI_MODELS_CONFIG);
-const piProvider = piModelConfig?.providers?.[PI_MODEL_PROVIDER];
 
 // Enabled by default when an opencode command is available; override with OPENCODE_ENABLED.
 export const OPENCODE_ENABLED =
@@ -46,24 +42,33 @@ export const OPENCODE_ARGS = splitCommandArgs(
   process.env.OPENCODE_ARGS ?? (OPENCODE_BIN === 'npx' ? '-y opencode-ai@latest' : ''),
 );
 
-// vLLM/OpenAI-compatible provider defaults from ~/.pi/agent/models.json, overridable via env.
-export const VLLM_BASE_URL = process.env.VLLM_BASE_URL ?? piProvider?.baseUrl ?? '';
-export const VLLM_API_KEY = process.env.VLLM_API_KEY ?? piProvider?.apiKey ?? '';
-export const VLLM_MODEL =
-  process.env.VLLM_MODEL
-  ?? piModelConfig?.spawnModels?.complex
-  ?? piProvider?.models?.[0]?.id
-  ?? '';
+// vLLM / OpenAI-compatible provider settings (env-only).
+export const VLLM_BASE_URL = process.env.VLLM_BASE_URL ?? '';
+export const VLLM_API_KEY = process.env.VLLM_API_KEY ?? '';
+export const VLLM_MODEL = process.env.VLLM_MODEL ?? '';
 
+
+
+// --- Valkey (Redis-compatible) queue + pub/sub ---
+// Uses ioredis which works cleanly with Valkey 9.
+export const VALKEY_URL = process.env.VALKEY_URL ?? 'redis://valkey:6379';
+
+let _valkeyConn = null;
+export async function getValkey() {
+  if (_valkeyConn) return _valkeyConn;
+  const IORedis = (await import('ioredis')).default;
+  const url = new URL(VALKEY_URL);
+  _valkeyConn = new IORedis({
+    host: url.hostname,
+    port: url.port || 6379,
+    lazyConnect: true,
+  });
+  _valkeyConn.on('error', (err) => console.error('[valkey] connection error:', err.message));
+  await _valkeyConn.connect();
+  return _valkeyConn;
+}
 export const OPENCODE_TIMEOUT_MS = Number.parseInt(process.env.OPENCODE_TIMEOUT_MS ?? '600000', 10); // 10 min default
 
-function readPiModelConfig(filePath) {
-  try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  } catch {
-    return null;
-  }
-}
 
 function commandWorks(command, args) {
   try {

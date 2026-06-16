@@ -1,6 +1,6 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { spawn, spawnSync } from 'node:child_process';
+import fs from "node:fs";
+import path from "node:path";
+import { spawn, spawnSync } from "node:child_process";
 import {
   OPENCODE_BIN,
   OPENCODE_ENABLED,
@@ -9,7 +9,7 @@ import {
   VLLM_BASE_URL,
   VLLM_API_KEY,
   VLLM_MODEL,
-} from './config.js';
+} from "./config.js";
 
 /**
  * Check whether opencode is available on the system (or at the configured path).
@@ -19,8 +19,8 @@ export function isOpencodeAvailable() {
   if (OPENCODE_ENABLED === true) return true;
   // Auto-detect: try to find the binary
   try {
-    const result = spawnSync(OPENCODE_BIN, [...OPENCODE_ARGS, '--version'], {
-      stdio: 'ignore',
+    const result = spawnSync(OPENCODE_BIN, [...OPENCODE_ARGS, "--version"], {
+      stdio: "ignore",
       timeout: 10_000,
     });
     return result.status === 0;
@@ -40,19 +40,19 @@ export function buildOpencodeConfig() {
   const modelKey = slugModelKey(modelId);
 
   if (!VLLM_BASE_URL) {
-    throw new Error('VLLM_BASE_URL is not configured. Set it or provide ~/.pi/agent/models.json.');
+    throw new Error('VLLM_BASE_URL is not configured. Set VLLM_BASE_URL, VLLM_API_KEY, and VLLM_MODEL environment variables.');
   }
 
   return {
-    $schema: 'https://opencode.ai/config.json',
+    $schema: "https://opencode.ai/config.json",
     model: currentModelSpecifier(),
     provider: {
       llm2go: {
-        npm: '@ai-sdk/openai-compatible',
-        name: 'vLLM (llm2go)',
+        npm: "@ai-sdk/openai-compatible",
+        name: "vLLM (llm2go)",
         options: {
           baseURL: VLLM_BASE_URL,
-          apiKey: '{env:VLLM_API_KEY}',
+          apiKey: "{env:VLLM_API_KEY}",
         },
         models: {
           [modelKey]: {
@@ -64,19 +64,19 @@ export function buildOpencodeConfig() {
     },
     permission: {
       read: {
-        '*': 'allow',
+        "*": "allow",
       },
       edit: {
-        'src/*': 'allow',
+        "src/*": "allow",
       },
-      glob: 'allow',
-      grep: 'allow',
-      bash: 'allow',
-      webfetch: 'deny',
-      websearch: 'deny',
-      task: 'deny',
-      external_directory: 'deny',
-      question: 'deny',
+      glob: "allow",
+      grep: "allow",
+      bash: "allow",
+      webfetch: "deny",
+      websearch: "deny",
+      task: "deny",
+      external_directory: "deny",
+      question: "deny",
     },
   };
 }
@@ -87,8 +87,8 @@ export function buildOpencodeConfig() {
  */
 export function writeOpencodeConfig(workspaceDir) {
   const config = buildOpencodeConfig();
-  const configPath = path.join(workspaceDir, 'opencode.json');
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+  const configPath = path.join(workspaceDir, "opencode.json");
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), "utf8");
   return configPath;
 }
 
@@ -98,8 +98,8 @@ export function writeOpencodeConfig(workspaceDir) {
 export function buildOpencodePrompt(view, files) {
   const fileContext =
     files.length > 0
-      ? `\n\nUploaded files (${files.length}):\n${files.map((f) => `- ${f.name} (${f.type}, ${f.size} bytes): ${f.content.slice(0, 3000)}`).join('\n')}`
-      : '';
+      ? `\n\nUploaded files (${files.length}):\n${files.map((f) => `- ${f.name} (${f.type}, ${f.size} bytes): ${f.content.slice(0, 3000)}`).join("\n")}`
+      : "";
 
   return `You are a React TypeScript expert. Generate a complete, self-contained React component file at src/View.tsx.
 
@@ -130,75 +130,92 @@ export function runOpencode(workspaceDir, view, files, onEvent) {
   const configPath = writeOpencodeConfig(workspaceDir);
 
   // Ensure View.tsx placeholder exists so opencode has something to edit
-  const viewPath = path.join(workspaceDir, 'src', 'View.tsx');
+  const viewPath = path.join(workspaceDir, "src", "View.tsx");
   if (!fs.existsSync(viewPath)) {
     fs.writeFileSync(
       viewPath,
       `// Placeholder — opencode will replace this content.\nexport const meta = { title: 'Loading', description: '...' };\nexport default function GeneratedView() { return <div>Loading...</div>; }\n`,
-      'utf8',
+      "utf8",
     );
   }
 
   return new Promise((resolve, reject) => {
-    const child = spawn(OPENCODE_BIN, [...OPENCODE_ARGS, 'run', '--model', currentModelSpecifier(), '--pure', prompt], {
-      cwd: workspaceDir,
-      env: {
-        ...process.env,
-        OPENCODE_CONFIG: configPath,
-        OPENCODE_DISABLE_AUTOUPDATE: 'true',
-        OPENCODE_DISABLE_MODELS_FETCH: 'true',
-        OPENCODE_DISABLE_DEFAULT_PLUGINS: 'true',
-        OPENCODE_DISABLE_TERMINAL_TITLE: 'true',
-        VLLM_API_KEY,
-        VLLM_BASE_URL,
-        VLLM_MODEL,
-        NODE_ENV: 'development',
+    const child = spawn(
+      OPENCODE_BIN,
+      [
+        ...OPENCODE_ARGS,
+        "run",
+        "--model",
+        currentModelSpecifier(),
+        "--pure",
+        prompt,
+      ],
+      {
+        cwd: workspaceDir,
+        env: {
+          ...process.env,
+          OPENCODE_CONFIG: configPath,
+          OPENCODE_DISABLE_AUTOUPDATE: "true",
+          OPENCODE_DISABLE_MODELS_FETCH: "true",
+          OPENCODE_DISABLE_DEFAULT_PLUGINS: "true",
+          OPENCODE_DISABLE_TERMINAL_TITLE: "true",
+          VLLM_API_KEY,
+          VLLM_BASE_URL,
+          VLLM_MODEL,
+          NODE_ENV: "development",
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: OPENCODE_TIMEOUT_MS,
       },
-      stdio: ['ignore', 'pipe', 'pipe'],
-      timeout: OPENCODE_TIMEOUT_MS,
-    });
+    );
 
-    let output = '';
-    const bufOut = { partial: '' };
-    const bufErr = { partial: '' };
+    let output = "";
+    const bufOut = { partial: "" };
+    const bufErr = { partial: "" };
 
     const timer = setTimeout(() => {
-      child.kill('SIGTERM');
-      reject(new Error(`opencode run timed out after ${OPENCODE_TIMEOUT_MS}ms`));
+      child.kill("SIGTERM");
+      reject(
+        new Error(`opencode run timed out after ${OPENCODE_TIMEOUT_MS}ms`),
+      );
     }, OPENCODE_TIMEOUT_MS);
 
-    child.stdout.on('data', (chunk) => {
+    child.stdout.on("data", (chunk) => {
       const text = chunk.toString();
       output += text;
       streamLines(bufOut, text, onEvent);
     });
 
-    child.stderr.on('data', (chunk) => {
+    child.stderr.on("data", (chunk) => {
       const text = chunk.toString();
       output += text;
       streamLines(bufErr, text, onEvent);
     });
 
-    child.on('error', (error) => {
+    child.on("error", (error) => {
       clearTimeout(timer);
       reject(new Error(`opencode failed to start: ${error.message}`));
     });
 
-    child.on('close', (code) => {
+    child.on("close", (code) => {
       clearTimeout(timer);
       if (code === 0) {
         resolve(output);
       } else {
-        reject(new Error(`opencode exited with code ${code}. ${output.slice(-3000)}`));
+        reject(
+          new Error(
+            `opencode exited with code ${code}. ${output.slice(-3000)}`,
+          ),
+        );
       }
     });
   });
 }
 
 /**
-* Build the prompt for an enhancement pass — asks opencode to rewrite View.tsx
-* based on user instructions while keeping the same constraints.
-*/
+ * Build the prompt for an enhancement pass — asks opencode to rewrite View.tsx
+ * based on user instructions while keeping the same constraints.
+ */
 export function buildOpencodeEnhancePrompt(view, instructions, currentSource) {
   return `You are a React TypeScript expert. Rewrite the existing src/View.tsx file below based on the user's enhancement instructions.
 
@@ -229,70 +246,88 @@ Generate the complete, updated src/View.tsx file. Do not explain your work — j
  * Reads the current View.tsx, builds an enhance prompt, and rewrites the file.
  */
 export function runOpencodeEnhance(workspaceDir, view, instructions, onEvent) {
-  const viewPath = path.join(workspaceDir, 'src', 'View.tsx');
+  const viewPath = path.join(workspaceDir, "src", "View.tsx");
   if (!fs.existsSync(viewPath)) {
-    throw new Error('Cannot enhance — src/View.tsx does not exist in workspace.');
+    throw new Error(
+      "Cannot enhance — src/View.tsx does not exist in workspace.",
+    );
   }
-  const currentSource = fs.readFileSync(viewPath, 'utf8');
+  const currentSource = fs.readFileSync(viewPath, "utf8");
   const prompt = buildOpencodeEnhancePrompt(view, instructions, currentSource);
   const configPath = writeOpencodeConfig(workspaceDir);
 
   return new Promise((resolve, reject) => {
-    const child = spawn(OPENCODE_BIN, [...OPENCODE_ARGS, 'run', '--model', currentModelSpecifier(), '--pure', prompt], {
-      cwd: workspaceDir,
-      env: {
-        ...process.env,
-        OPENCODE_CONFIG: configPath,
-        OPENCODE_DISABLE_AUTOUPDATE: 'true',
-        OPENCODE_DISABLE_MODELS_FETCH: 'true',
-        OPENCODE_DISABLE_DEFAULT_PLUGINS: 'true',
-        OPENCODE_DISABLE_TERMINAL_TITLE: 'true',
-        VLLM_API_KEY,
-        VLLM_BASE_URL,
-        VLLM_MODEL,
-        NODE_ENV: 'development',
+    const child = spawn(
+      OPENCODE_BIN,
+      [
+        ...OPENCODE_ARGS,
+        "run",
+        "--model",
+        currentModelSpecifier(),
+        "--pure",
+        prompt,
+      ],
+      {
+        cwd: workspaceDir,
+        env: {
+          ...process.env,
+          OPENCODE_CONFIG: configPath,
+          OPENCODE_DISABLE_AUTOUPDATE: "true",
+          OPENCODE_DISABLE_MODELS_FETCH: "true",
+          OPENCODE_DISABLE_DEFAULT_PLUGINS: "true",
+          OPENCODE_DISABLE_TERMINAL_TITLE: "true",
+          VLLM_API_KEY,
+          VLLM_BASE_URL,
+          VLLM_MODEL,
+          NODE_ENV: "development",
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: OPENCODE_TIMEOUT_MS,
       },
-      stdio: ['ignore', 'pipe', 'pipe'],
-      timeout: OPENCODE_TIMEOUT_MS,
-    });
+    );
 
-    let output = '';
-    const bufOut = { partial: '' };
-    const bufErr = { partial: '' };
+    let output = "";
+    const bufOut = { partial: "" };
+    const bufErr = { partial: "" };
 
     const timer = setTimeout(() => {
-      child.kill('SIGTERM');
-      reject(new Error(`opencode enhance timed out after ${OPENCODE_TIMEOUT_MS}ms`));
+      child.kill("SIGTERM");
+      reject(
+        new Error(`opencode enhance timed out after ${OPENCODE_TIMEOUT_MS}ms`),
+      );
     }, OPENCODE_TIMEOUT_MS);
 
-    child.stdout.on('data', (chunk) => {
+    child.stdout.on("data", (chunk) => {
       const text = chunk.toString();
       output += text;
       streamLines(bufOut, text, onEvent);
     });
 
-    child.stderr.on('data', (chunk) => {
+    child.stderr.on("data", (chunk) => {
       const text = chunk.toString();
       output += text;
       streamLines(bufErr, text, onEvent);
     });
 
-    child.on('error', (error) => {
+    child.on("error", (error) => {
       clearTimeout(timer);
       reject(new Error(`opencode enhance failed to start: ${error.message}`));
     });
 
-    child.on('close', (code) => {
+    child.on("close", (code) => {
       clearTimeout(timer);
       if (code === 0) {
         resolve(output);
       } else {
-        reject(new Error(`opencode enhance exited with code ${code}. ${output.slice(-3000)}`));
+        reject(
+          new Error(
+            `opencode enhance exited with code ${code}. ${output.slice(-3000)}`,
+          ),
+        );
       }
     });
   });
 }
-
 
 /* Stream completed lines from opencode output to the caller, buffering
  * partial lines across chunks so we don't send half a line. */
@@ -300,7 +335,7 @@ function streamLines(buf, text, onEvent) {
   if (!onEvent) return;
   const combined = buf.partial + text;
   const parts = combined.split(/\r?\n/);
-  buf.partial = parts.pop();                  // keep trailing partial
+  buf.partial = parts.pop(); // keep trailing partial
   for (const line of parts) {
     const trimmed = line.trim();
     if (trimmed) onEvent(trimmed);
@@ -308,7 +343,7 @@ function streamLines(buf, text, onEvent) {
 }
 
 function currentModelId() {
-  return VLLM_MODEL || 'Qwen/Qwen3.6-27B-FP8 - Reasoning OFF';
+  return VLLM_MODEL || "Qwen/Qwen3.6-27B-FP8 - Reasoning OFF";
 }
 
 function currentModelSpecifier() {
@@ -316,11 +351,11 @@ function currentModelSpecifier() {
 }
 
 function slugModelKey(modelId) {
-  return String(modelId)
-    .trim()
-    .replace(/\s+-\s+/g, '-')
-    .replace(/[^a-zA-Z0-9._-]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-    || 'generated-model';
+  return (
+    String(modelId)
+      .trim()
+      .replace(/\s+-\s+/g, "-")
+      .replace(/[^a-zA-Z0-9._-]+/g, "-")
+      .replace(/(^-|-$)/g, "") || "generated-model"
+  );
 }
-

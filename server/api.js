@@ -1,3 +1,5 @@
+// API server — serves static content, API routes, and SSE via Valkey pub/sub
+// Run with: node server/api.js
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
@@ -10,34 +12,65 @@ import {
   MAX_UPLOAD_BYTES,
   PORT,
   WORKSPACES_DIR,
+  publicUrlFor,
 } from './config.js';
-import { JobEvents, writeSseEvent } from './events.js';
+import { writeSseEvent } from './events.js';
 import { GenerationStore } from './store.js';
+import { publishEvent, subscribeEvents, enqueueJob } from './queue.js';
 import {
   createInitialView,
   createJobId,
-  GenerationWorker,
   normaliseFiles,
   normalisePrompt,
-  runPreviewBuild,
 } from './worker.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const store = new GenerationStore();
-const events = new JobEvents();
-const worker = new GenerationWorker(store, events);
+
+// Track active SSE connections per job ID
+const sseClients = new Map(); // id -> Set<response>
+
+// Subscribe to Valkey events channel and forward to SSE clients
+(async () => {
+  try {
+    await subscribeEvents(({ id, status, message, view }) => {
+      const clients = sseClients.get(id);
+      if (clients) {
+        const event = status ?? 'message';
+        const data = JSON.stringify({ status, message, view: view ? toPublicView(view) : undefined }).replace(/^\s+/, '');
+        for (const res of clients) {
+          if (!res.destroyed) {
+            res.write(`event: ${event}\n`);
+            res.write(`data: ${data}\n\n`);
+          }
+        }
+        // Clean up if job is terminal
+        if (status === 'ready' || status === 'error' || status === 'deleted') {
+          // Keep connection open for a bit (client will close)
+        }
+      }
+    });
+    console.log('[api] subscribed to Valkey events channel');
+  } catch (err) {
+    console.error('[api] failed to subscribe to Valkey events:', err.message);
+  }
+})();
 
 const server = http.createServer(async (request, response) => {
   try {
     const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
 
+    // Health check
     if (url.pathname === '/api/health') {
       return sendJson(response, 200, { ok: true });
     }
 
+    // Create generation job
     if (url.pathname === '/api/generation-jobs' && request.method === 'POST') {
       return createGenerationJob(request, response);
     }
 
+    // Get job status
     const jobStatusMatch = url.pathname.match(/^\/api\/generation-jobs\/([a-zA-Z0-9_-]{3,64})$/);
     if (jobStatusMatch && request.method === 'GET') {
       const view = store.getView(jobStatusMatch[1]);
@@ -45,46 +78,49 @@ const server = http.createServer(async (request, response) => {
       return sendJson(response, 200, toPublicView(view));
     }
 
+    // SSE events
     const eventsMatch = url.pathname.match(/^\/api\/generation-jobs\/([a-zA-Z0-9_-]{3,64})\/events$/);
     if (eventsMatch && request.method === 'GET') {
       return streamJobEvents(eventsMatch[1], request, response);
     }
 
+    // Enhance job
     const enhanceMatch = url.pathname.match(/^\/api\/generation-jobs\/([a-zA-Z0-9_-]{3,64})\/enhance$/);
     if (enhanceMatch && request.method === 'POST') {
       return handleEnhance(enhanceMatch[1], request, response);
     }
 
-    const previewTriggerMatch = url.pathname.match(/^\/api\/generation-jobs\/([a-zA-Z0-9_-]{3,64})\/preview$/);
-    if (previewTriggerMatch && request.method === 'POST') {
-      return triggerPreview(previewTriggerMatch[1], response);
+    // Preview trigger
+    const previewMatch = url.pathname.match(/^\/api\/generation-jobs\/([a-zA-Z0-9_-]{3,64})\/preview$/);
+    if (previewMatch && request.method === 'POST') {
+      return triggerPreview(previewMatch[1], response);
     }
 
+    // List views
     if (url.pathname === '/api/views' && request.method === 'GET') {
       return sendJson(response, 200, { views: store.listViews().map(toPublicView) });
     }
 
+    // Delete view
     const deleteMatch = url.pathname.match(/^\/api\/views\/([a-zA-Z0-9_-]{3,64})$/);
     if (deleteMatch && request.method === 'DELETE') {
       return deleteView(deleteMatch[1], response);
     }
 
+    // Serve generated view
     const generated = url.pathname.match(/^\/gen\/([a-zA-Z0-9_-]{3,64})(?:\/(.*))?$/);
     if (generated && request.method === 'GET') {
       return serveGeneratedView(generated[1], generated[2] ?? '', response);
-    }
 
-    const previewMatch = url.pathname.match(/^\/gen-preview\/([a-zA-Z0-9_-]{3,64})(?:\/(.*))?$/);
-    if (previewMatch && request.method === 'GET') {
-      return servePreview(previewMatch[1], previewMatch[2] ?? '', response);
     }
-
     // Serve static example apps (/firefox/* and /docker/*)
     const exampleMatch = url.pathname.match(/^(\/(firefox|docker))(?:\/(.*))?$/);
     if (exampleMatch && request.method === 'GET') {
       return serveExample(exampleMatch[2], exampleMatch[3] ?? '', response);
     }
 
+
+    // Serve main app
     if (request.method === 'GET') {
       return serveMainApp(url.pathname, response);
     }
@@ -97,8 +133,10 @@ const server = http.createServer(async (request, response) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`FM2C generator server listening on http://localhost:${PORT}`);
+  console.log(`FM2C API server listening on http://localhost:${PORT}`);
 });
+
+// --- Handlers ---
 
 async function createGenerationJob(request, response) {
   const body = await readJsonBody(request);
@@ -108,7 +146,13 @@ async function createGenerationJob(request, response) {
   const id = createJobId(prompt, existingIds);
   const view = createInitialView({ id, prompt, files });
   store.createView(view, files);
-  worker.enqueue(id);
+  
+  // Enqueue in Valkey for the worker to pick up
+  await enqueueJob(id);
+  
+  // Publish initial queued event
+  await publishEvent(id, { status: 'queued', message: 'Generation job queued.' });
+  
   return sendJson(response, 202, toPublicView(view));
 }
 
@@ -123,11 +167,58 @@ function streamJobEvents(id, request, response) {
     Connection: 'keep-alive',
     'X-Accel-Buffering': 'no',
   });
+  
+  // Send current status immediately
   writeSseEvent(response, view.status, { status: view.status, view: toPublicView(view) });
 
-  const listener = (payload) => writeSseEvent(response, payload.status ?? 'message', payload);
-  events.on(id, listener);
-  request.on('close', () => events.off(id, listener));
+  // Register this connection
+  if (!sseClients.has(id)) sseClients.set(id, new Set());
+  sseClients.get(id).add(response);
+
+  request.on('close', () => {
+    sseClients.get(id)?.delete(response);
+  });
+}
+
+async function handleEnhance(id, request, response) {
+  const view = store.getView(id);
+  if (!view || view.status === 'deleted') return sendJson(response, 404, { error: 'Generated view not found.' });
+  if (view.status !== 'ready') {
+    return sendJson(response, 409, { error: `Cannot enhance view with status '${view.status}'. It must be 'ready'.` });
+  }
+
+  const body = await readJsonBody(request);
+  const instructions = body.instructions;
+  if (!instructions || !String(instructions).trim()) {
+    return sendJson(response, 400, { error: 'Enhancement instructions are required.' });
+  }
+
+  // For enhance, we need the worker to handle it. 
+  // Store enhancement request in DB and enqueue special job.
+  // For now, publish event and let worker handle via a special queue key.
+  await publishEvent(id, { 
+    status: 'enhancing', 
+    message: `Enhancing view: ${String(instructions).slice(0, 100)}`,
+    instructions: String(instructions).trim(),
+  });
+  
+  // Re-enqueue for worker to process as enhance
+  await enqueueJob(`enhance:${id}:${Buffer.from(String(instructions).trim()).toString('base64url')}`);
+  
+  const updated = store.updateStatus(id, 'enhancing');
+  return sendJson(response, 202, toPublicView(updated));
+}
+
+async function triggerPreview(id, response) {
+  const view = store.getView(id);
+  if (!view || view.status === 'deleted') return sendJson(response, 404, { error: 'Generated view not found.' });
+  if (view.status !== 'generating' && view.status !== 'validating') {
+    return sendJson(response, 409, { error: 'Preview is only available while the job is generating or validating.' });
+  }
+  
+  // For preview, the worker needs to build it. Enqueue preview job.
+  await enqueueJob(`preview:${id}`);
+  return sendJson(response, 200, { preview_url: `/gen-preview/${id}` });
 }
 
 function deleteView(id, response) {
@@ -136,7 +227,7 @@ function deleteView(id, response) {
   fs.rmSync(path.join(WORKSPACES_DIR, id), { recursive: true, force: true });
   fs.rmSync(path.join(DIST_DIR, id), { recursive: true, force: true });
   const deleted = store.updateStatus(id, 'deleted');
-  events.publish(id, { status: 'deleted', message: 'Generated view deleted.' });
+  void publishEvent(id, { status: 'deleted', message: 'Generated view deleted.' });
   return sendJson(response, 200, toPublicView(deleted));
 }
 
@@ -156,44 +247,6 @@ function serveGeneratedView(id, assetPath, response) {
   serveFile(requested, response);
 }
 
-async function triggerPreview(id, response) {
-  const view = store.getView(id);
-  if (!view || view.status === 'deleted') return sendJson(response, 404, { error: 'Generated view not found.' });
-  if (view.status !== 'generating' && view.status !== 'validating') {
-    return sendJson(response, 409, { error: 'Preview is only available while the job is generating or validating.' });
-  }
-  try {
-    await runPreviewBuild(id);
-    return sendJson(response, 200, { preview_url: `/gen-preview/${id}` });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return sendJson(response, 500, { error: `Preview build failed: ${message}` });
-  }
-}
-
-async function handleEnhance(id, request, response) {
-  const view = store.getView(id);
-  if (!view || view.status === 'deleted') return sendJson(response, 404, { error: 'Generated view not found.' });
-  if (view.status !== 'ready') {
-    return sendJson(response, 409, { error: `Cannot enhance view with status '${view.status}'. It must be 'ready'.` });
-  }
-
-  const body = await readJsonBody(request);
-  const instructions = body.instructions;
-  if (!instructions || !String(instructions).trim()) {
-    return sendJson(response, 400, { error: 'Enhancement instructions are required.' });
-  }
-
-  try {
-    await worker.enhanceJob(id, String(instructions).trim());
-    const updated = store.getView(id);
-    return sendJson(response, 202, toPublicView(updated));
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return sendJson(response, 500, { error: `Enhancement failed: ${message}` });
-  }
-}
-
 function servePreview(id, assetPath, response) {
   const previewDir = path.resolve(DIST_DIR, '.tmp', id, 'preview');
   if (!fs.existsSync(previewDir) || !fs.statSync(previewDir).isDirectory()) return sendNotFound(response);
@@ -209,8 +262,8 @@ function servePreview(id, assetPath, response) {
   serveFile(requested, response);
 }
 
+// Serve static example apps
 function serveExample(exampleName, assetPath, response) {
-  // Check dist/examples/ first (production), then examples/ (dev)
   const candidates = [
     path.resolve(MAIN_DIST_DIR, 'examples', exampleName),
     path.resolve(EXAMPLES_DIR, exampleName),
@@ -233,6 +286,9 @@ function serveExample(exampleName, assetPath, response) {
   response.setHeader('X-Content-Type-Options', 'nosniff');
   serveFile(requested, response);
 }
+
+
+
 function serveMainApp(urlPath, response) {
   const cleanPath = normaliseMainAppPath(urlPath);
   const requested = path.resolve(MAIN_DIST_DIR, `.${cleanPath}`);
@@ -245,12 +301,20 @@ function serveMainApp(urlPath, response) {
 }
 
 function normaliseMainAppPath(urlPath) {
-  if (urlPath === '/' || urlPath === '/index.html') return '/index.html';
-  return urlPath;
+  if (urlPath === '/' || urlPath === '') return '/index.html';
+  // Support assets/ for the built app
+  if (urlPath.startsWith('/assets/')) return urlPath;
+  // Fallback to SPA
+  return '/index.html';
 }
 
+// --- Helpers ---
+
 function serveFile(filePath, response) {
-  response.writeHead(200, { 'Content-Type': mimeType(filePath), 'Cache-Control': filePath.includes(`${path.sep}assets${path.sep}`) ? 'public, max-age=31536000, immutable' : 'no-cache' });
+  response.writeHead(200, { 
+    'Content-Type': mimeType(filePath), 
+    'Cache-Control': filePath.includes(`${path.sep}assets${path.sep}`) ? 'public, max-age=31536000, immutable' : 'no-cache' 
+  });
   fs.createReadStream(filePath).pipe(response);
 }
 
