@@ -1,0 +1,69 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: spl-visualizer-api:latest
+    ports:
+      - "${PORT:-8787}:8787"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PORT: 8787
+      VALKEY_URL: redis://valkey:6379
+      GENERATED_DATA_DIR: /app/data
+      GENERATED_WORKSPACES_DIR: /app/generated-workspaces
+      GENERATED_DIST_DIR: /app/generated-dist
+      GENERATED_VIEW_TTL_HOURS: ${GENERATED_VIEW_TTL_HOURS:-168}
+    volumes:
+      - spl_visualizer_data:/app/data
+      - spl_visualizer_workspaces:/app/generated-workspaces
+      - spl_visualizer_generated_dist:/app/generated-dist
+    depends_on:
+      valkey:
+        condition: service_started
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+      args:
+        OPENCODE_VERSION: ${OPENCODE_VERSION:-latest}
+    image: spl-visualizer-worker:latest
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      VALKEY_URL: redis://valkey:6379
+      GENERATED_DATA_DIR: /app/data
+      GENERATED_WORKSPACES_DIR: /app/generated-workspaces
+      GENERATED_DIST_DIR: /app/generated-dist
+      OPENCODE_TIMEOUT_MS: ${OPENCODE_TIMEOUT_MS:-600000}
+      OPENCODE_ENABLED: ${OPENCODE_ENABLED:-true}
+      OPENCODE_FALLBACK_TEMPLATE: ${OPENCODE_FALLBACK_TEMPLATE:-false}
+      VLLM_BASE_URL: ${VLLM_BASE_URL:-}
+      VLLM_API_KEY: ${VLLM_API_KEY:-}
+      VLLM_MODEL: ${VLLM_MODEL:-}
+      PI_MODEL_PROVIDER: ${PI_MODEL_PROVIDER:-llm2go}
+    volumes:
+      - spl_visualizer_data:/app/data
+      - spl_visualizer_workspaces:/app/generated-workspaces
+      - spl_visualizer_generated_dist:/app/generated-dist
+    depends_on:
+      valkey:
+        condition: service_started
+    restart: unless-stopped
+
+  valkey:
+    image: valkey/valkey:latest
+    volumes:
+      - spl_visualizer_valkey:/data
+    restart: unless-stopped
+
+volumes:
+  spl_visualizer_data:
+  spl_visualizer_workspaces:
+  spl_visualizer_generated_dist:
+  spl_visualizer_valkey:

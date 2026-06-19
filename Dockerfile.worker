@@ -1,0 +1,40 @@
+# syntax=docker/dockerfile:1
+
+# Worker container — runs opencode AI agent + vite builds for generated views
+# Needs full deps including opencode and vite
+FROM node:22-bookworm-slim
+
+WORKDIR /app
+
+ENV NODE_ENV=production \
+    GENERATED_DATA_DIR=/app/data \
+    GENERATED_WORKSPACES_DIR=/app/generated-workspaces \
+    GENERATED_DIST_DIR=/app/generated-dist \
+    OPENCODE_DISABLE_AUTOUPDATE=true
+
+COPY package.json package-lock.json ./
+
+# Install ALL deps (including dev) because worker runs vite builds at runtime
+ARG OPENCODE_VERSION=latest
+RUN npm ci --include=dev \
+    && npm install -g "opencode-ai@${OPENCODE_VERSION}" \
+    && npm cache clean --force
+
+# Copy source needed for generation (vite config, templates, validation, server modules)
+COPY server/ ./server/
+COPY src/ ./src/
+COPY AGENTS.md ./AGENTS.md
+COPY index.html ./index.html
+COPY vite.generated.config.ts ./vite.generated.config.ts
+COPY tsconfig*.json ./
+
+# Create runtime directories
+RUN mkdir -p /app/data /app/generated-workspaces /app/generated-dist \
+    && chown -R node:node /app
+
+USER node
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "console.log('worker ok'); process.exit(0)"
+
+CMD ["node", "server/worker-standalone.js"]
