@@ -9,8 +9,7 @@ type GeneratedStatus =
   | "publishing"
   | "enhancing"
   | "ready"
-  | "error"
-  | "deleted";
+  | "error";
 
 type GeneratedView = {
   id: string;
@@ -64,7 +63,6 @@ const PROGRESS_LABELS: Record<GeneratedStatus, string> = {
   enhancing: "Enhancing",
   ready: "Ready",
   error: "Error",
-  deleted: "Deleted",
 };
 const ACCEPTED_FILES =
   ".ini,.txt,.md,.json,.yaml,.yml,.csv,.png,.jpg,.jpeg,.svg";
@@ -206,17 +204,6 @@ export function GeneratedViews() {
     }
   }
 
-  async function deleteView(id: string) {
-    setError(null);
-    try {
-      const response = await fetch(`/api/views/${id}`, { method: "DELETE" });
-      if (!response.ok) throw new Error("Could not delete generated view.");
-      setViews((current) => current.filter((view) => view.id !== id));
-      if (activeJob?.id === id) setActiveJob(null);
-    } catch (caught) {
-      setError(errorMessage(caught));
-    }
-  }
 
   async function triggerPreview(id: string) {
     setPreviewLoading(true);
@@ -425,7 +412,12 @@ export function GeneratedViews() {
                   }
                   style={{ display: "none" }}
                 />
-                <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
                   Add documentation or settings
                 </p>
                 <p style={{ margin: "6px 0 0", fontSize: 13, color: "#444" }}>
@@ -893,13 +885,6 @@ export function GeneratedViews() {
                       >
                         Select
                       </button>
-                      <button
-                        onClick={() => void deleteView(view.id)}
-                        className="gv-pill gv-pill-danger"
-                        style={pillDanger}
-                      >
-                        Delete
-                      </button>
                     </div>
                     {view.status === "ready" && activeJob?.id === view.id && (
                       <iframe
@@ -1077,18 +1062,9 @@ const pillDark = {
   cursor: "pointer",
   letterSpacing: "0.02em",
 } as const;
-const pillDanger = {
-  border: "3px solid #000",
-  background: "#fff",
-  color: "#000",
-  fontWeight: 700,
-  fontSize: 14,
-  padding: "10px 20px",
-  cursor: "pointer",
-} as const;
 const errorBox = {
   marginTop: 12,
-  border: "3px solid #000",
+  border: "1px solid #000",
   background: "#fff",
   color: "#000",
   padding: 12,

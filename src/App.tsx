@@ -52,7 +52,7 @@ function TopNav() {
             href={item.href}
             style={
               {
-                color: isActive ? '#00e600' : '#aaa',
+                color: isActive ? '#00e600' : '#fff',
                 textDecoration: 'none',
                 padding: '8px 14px',
                 borderRadius: 8,
