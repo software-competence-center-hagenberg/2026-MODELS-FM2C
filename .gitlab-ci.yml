@@ -12,7 +12,7 @@ include:
           stage: publish
           image: $CI_REGISTRY_IMAGE/spl-visualizer-api
           tag: $CI_COMMIT_SHORT_SHA
-          additional-tags: "$CI_COMMIT_REF_SLUG latest"
+          additional-tags: "$CI_COMMIT_REF_SLUG:latest"
           dockerfile: Dockerfile.api
           tags: ["default"]
           job-name: "build-spl-visualizer-api-image"
@@ -23,7 +23,7 @@ include:
           stage: publish
           image: $CI_REGISTRY_IMAGE/spl-visualizer-worker
           tag: $CI_COMMIT_SHORT_SHA
-          additional-tags: "$CI_COMMIT_REF_SLUG latest"
+          additional-tags: "$CI_COMMIT_REF_SLUG:latest"
           dockerfile: Dockerfile.worker
           tags: ["default"]
           job-name: "build-spl-visualizer-worker-image"
