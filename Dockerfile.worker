@@ -28,13 +28,24 @@ COPY index.html ./index.html
 COPY vite.generated.config.ts ./vite.generated.config.ts
 COPY tsconfig*.json ./
 
-# Create runtime directories
+# Install iptables for egress lockdown (used by worker-entrypoint.sh under node + NET_ADMIN)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends iptables ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create runtime directories; only chown the writable data dirs to node.
+# The rest of /app stays root-owned so node can READ but not WRITE server/src/etc.
 RUN mkdir -p /app/data /app/generated-workspaces /app/generated-dist \
-    && chown -R node:node /app
+    && chown -R node:node /app/data /app/generated-workspaces /app/generated-dist
+
+# Egress lockdown script — runs as node + CAP_NET_ADMIN, sets iptables rules
+# before exec'ing the worker so the agent cannot reach the open internet.
+COPY server/worker-entrypoint.sh /app/server/worker-entrypoint.sh
+RUN chmod +x /app/server/worker-entrypoint.sh
 
 USER node
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD node -e "console.log('worker ok'); process.exit(0)"
 
-CMD ["node", "server/worker-standalone.js"]
+CMD ["/app/server/worker-entrypoint.sh"]

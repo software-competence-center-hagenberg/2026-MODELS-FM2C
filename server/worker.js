@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,7 +16,7 @@ import {
   WORKSPACES_DIR,
   publicUrlFor,
 } from './config.js';
-import { validateGeneratedView } from './validation.js';
+import { trustedIndexHtml, trustedMainTsx, validateGeneratedView } from './validation.js';
 import { isOpencodeAvailable, runOpencode, runOpencodeEnhance } from './opencode.js';
 
 const STATUSES = ['preparing', 'generating', 'validating', 'building', 'publishing', 'ready'];
@@ -148,6 +150,7 @@ export class GenerationWorker {
   async generating(view, files) {
     this.setStatus(view.id, 'generating', 'Generating a self-contained React TypeScript configurator view.');
     const workspaceDir = path.resolve(WORKSPACES_DIR, view.id);
+    const viewPath = path.join(workspaceDir, 'src', 'View.tsx');
 
     if (isOpencodeAvailable()) {
       try {
@@ -156,7 +159,6 @@ export class GenerationWorker {
           this.events.publish(view.id, { status: 'generating', message: `> ${line}` });
         });
         // Check whether opencode actually produced anything beyond the placeholder
-        const viewPath = path.join(workspaceDir, 'src', 'View.tsx');
         const result = fs.readFileSync(viewPath, 'utf8');
         if (result.includes('// Placeholder — opencode will replace this content.')) {
           console.warn('[spl-visualizer] opencode left stub behind, falling back to template.');
@@ -165,10 +167,26 @@ export class GenerationWorker {
         }
       } catch (opencodeError) {
         const message = opencodeError instanceof Error ? opencodeError.message : String(opencodeError);
+        console.warn('[spl-visualizer] opencode run failed, attempting partial recovery:', message);
+
+        // --- Graceful partial recovery ---
+        if (fs.existsSync(viewPath)) {
+          const partialSource = fs.readFileSync(viewPath, 'utf8');
+          if (!partialSource.includes('// Placeholder — opencode will replace this content.')) {
+            try {
+              validateGeneratedView(workspaceDir, view.title);
+              console.log('[spl-visualizer] partial recovery succeeded — recovered valid View.tsx after opencode failure.');
+              return;
+            } catch (validationError) {
+              console.warn('[spl-visualizer] partial recovery failed validation:', validationError.message);
+            }
+          }
+        }
+
         if (!OPENCODE_FALLBACK_TEMPLATE) {
           throw new Error(`opencode generation failed: ${message}`);
         }
-        console.warn('[spl-visualizer] opencode run failed, falling back to template:', message);
+        console.warn('[spl-visualizer] falling back to template after opencode failure:', message);
       }
     }
     if (!isOpencodeAvailable() && !OPENCODE_FALLBACK_TEMPLATE) {
@@ -176,13 +194,13 @@ export class GenerationWorker {
     }
 
     const source = generateViewSource(view, files);
-    fs.writeFileSync(path.join(workspaceDir, 'src', 'View.tsx'), source);
+    fs.writeFileSync(viewPath, source);
   }
 
   async validating(view) {
     this.setStatus(view.id, 'validating', 'Validating generated source before build.');
     const workspaceDir = path.resolve(WORKSPACES_DIR, view.id);
-    validateGeneratedView(workspaceDir);
+    validateGeneratedView(workspaceDir, view.title);
 
     // Extract meta description from the generated View.tsx and update the stored view
     const viewSource = fs.readFileSync(path.join(workspaceDir, 'src', 'View.tsx'), 'utf8');
@@ -239,13 +257,6 @@ export class GenerationWorker {
   }
 }
 
-function trustedIndexHtml(title) {
-  return `<!doctype html>\n<html lang="en">\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>${escapeHtml(title)}</title>\n  </head>\n  <body>\n    <div id="root"></div>\n    <script type="module" src="/src/main.tsx"></script>\n  </body>\n</html>\n`;
-}
-
-function trustedMainTsx() {
-  return `import React from 'react';\nimport { createRoot } from 'react-dom/client';\nimport GeneratedView from './View';\n\ncreateRoot(document.getElementById('root')!).render(\n  <React.StrictMode>\n    <GeneratedView />\n  </React.StrictMode>,\n);\n`;
-}
 
 function generateViewSource(view, files) {
   const fileSummaries = files.map((file) => ({
@@ -355,9 +366,6 @@ function slugify(value) {
   return String(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
-function escapeHtml(value) {
-  return String(value).replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[char]);
-}
 
 function assertInside(root, target) {
   const relative = path.relative(path.resolve(root), path.resolve(target));

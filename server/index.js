@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
@@ -19,7 +20,6 @@ import {
   GenerationWorker,
   normaliseFiles,
   normalisePrompt,
-  runPreviewBuild,
 } from './worker.js';
 
 const store = new GenerationStore();
@@ -76,7 +76,7 @@ const server = http.createServer(async (request, response) => {
 
     const previewMatch = url.pathname.match(/^\/gen-preview\/([a-zA-Z0-9_-]{3,64})(?:\/(.*))?$/);
     if (previewMatch && request.method === 'GET') {
-      return servePreview(previewMatch[1], previewMatch[2] ?? '', response);
+      return await servePreview(previewMatch[1], previewMatch[2] ?? '', response);
     }
 
     // Serve static example apps (/firefox/* and /docker/*)
@@ -159,16 +159,11 @@ function serveGeneratedView(id, assetPath, response) {
 async function triggerPreview(id, response) {
   const view = store.getView(id);
   if (!view || view.status === 'deleted') return sendJson(response, 404, { error: 'Generated view not found.' });
-  if (view.status !== 'generating' && view.status !== 'validating') {
-    return sendJson(response, 409, { error: 'Preview is only available while the job is generating or validating.' });
+  if (view.status !== 'generating' && view.status !== 'validating' && view.status !== 'building' && view.status !== 'error') {
+    return sendJson(response, 409, { error: 'Preview is only available while the job is generating, validating, building, or if it encountered an error.' });
   }
-  try {
-    await runPreviewBuild(id);
-    return sendJson(response, 200, { preview_url: `/gen-preview/${id}` });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return sendJson(response, 500, { error: `Preview build failed: ${message}` });
-  }
+  // No build needed — preview is served as live-transpiled HTML
+  return sendJson(response, 200, { preview_url: `/gen-preview/${id}` });
 }
 
 async function handleEnhance(id, request, response) {
@@ -194,19 +189,202 @@ async function handleEnhance(id, request, response) {
   }
 }
 
-function servePreview(id, assetPath, response) {
-  const previewDir = path.resolve(DIST_DIR, '.tmp', id, 'preview');
-  if (!fs.existsSync(previewDir) || !fs.statSync(previewDir).isDirectory()) return sendNotFound(response);
+async function servePreviewModule(id, response) {
+  const workspaceDir = path.resolve(WORKSPACES_DIR, id);
+  const viewPath = path.join(workspaceDir, 'src', 'View.tsx');
 
-  const requested = assetPath
-    ? path.resolve(previewDir, assetPath)
-    : path.join(previewDir, 'index.html');
-  if (!isInside(previewDir, requested)) return sendNotFound(response);
-  if (!fs.existsSync(requested) || !fs.statSync(requested).isFile()) return sendNotFound(response);
+  if (!fs.existsSync(viewPath)) {
+    response.writeHead(404, { 'Content-Type': 'text/plain' });
+    response.end('View.tsx not found yet');
+    return;
+  }
 
-  response.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; frame-ancestors 'self'");
+  let source;
+  try {
+    source = fs.readFileSync(viewPath, 'utf8');
+  } catch {
+    response.writeHead(500, { 'Content-Type': 'text/plain' });
+    response.end('Could not read View.tsx');
+    return;
+  }
+
+  if (source.includes('// Placeholder — opencode will replace this content.')) {
+    response.writeHead(204);
+    response.end();
+    return;
+  }
+
+  try {
+    const ts = (await import('typescript')).default;
+    const result = ts.transpileModule(source, {
+      compilerOptions: {
+        jsx: ts.JsxEmit.ReactJSX,
+        module: ts.ModuleKind.ESNext,
+        target: ts.ScriptTarget.ES2022,
+        strict: false,
+      },
+    });
+    response.setHeader('Content-Type', 'text/javascript; charset=utf-8');
+    response.setHeader('Cache-Control', 'no-store, no-cache');
+    response.writeHead(200);
+    response.end(result.outputText);
+  } catch (e) {
+    response.writeHead(500, { 'Content-Type': 'text/plain' });
+    response.end('Transpilation failed: ' + (e.message || String(e)));
+  }
+}
+
+async function servePreview(id, assetPath, response) {
+  // Serve the transpiled TSX as an ES module
+  if (assetPath === 'view.mjs') {
+    return servePreviewModule(id, response);
+  }
+
+  const workspaceDir = path.resolve(WORKSPACES_DIR, id);
+  const viewPath = path.join(workspaceDir, 'src', 'View.tsx');
+
+  // Read whatever View.tsx exists at this moment
+  let viewSource = '';
+  if (fs.existsSync(viewPath)) {
+    try {
+      viewSource = fs.readFileSync(viewPath, 'utf8');
+    } catch { /* ignore */ }
+  }
+
+  // Extract meta from source
+  let title = 'Generated View';
+  let description = 'Still generating…';
+  const titleMatch = viewSource.match(/title\s*:\s*['"]([^'"]+)['"]/);
+  const descMatch = viewSource.match(/description\s*:\s*['"]([^'"]+)['"]/);
+  if (titleMatch) title = titleMatch[1];
+  if (descMatch) description = descMatch[1];
+
+  // Try to transpile the TSX
+  let transpiled = '';
+  let transpileError = null;
+  if (viewSource && !viewSource.includes('// Placeholder — opencode will replace this content.')) {
+    try {
+      const ts = (await import('typescript')).default;
+      const result = ts.transpileModule(viewSource, {
+        compilerOptions: {
+          jsx: ts.JsxEmit.ReactJSX,
+          module: ts.ModuleKind.ESNext,
+          target: ts.ScriptTarget.ES2022,
+          strict: false,
+        },
+        reportDiagnostics: false,
+      });
+      transpiled = result.outputText;
+
+      // Check if transpilation produced something meaningful (has the meta export and default export)
+      if (!transpiled.includes('export') || transpiled.trim().length < 50) {
+        transpileError = 'Transpiled output appears incomplete.';
+        transpiled = '';
+      }
+    } catch (e) {
+      transpileError = e.message || String(e);
+    }
+  }
+
+  // Build the preview HTML
+  let html;
+  if (transpiled) {
+    html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(title)} — Live Preview</title>
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@19.2.6?deps=react-dom@19.2.6",
+        "react-dom": "https://esm.sh/react-dom@19.2.6?external:react",
+        "react-dom/client": "https://esm.sh/react-dom@19.2.6/client?external:react"
+      }
+    }
+    </script>
+  </head>
+  <body style="margin:0">
+    <div id="root"></div>
+    <script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import GeneratedView from '/gen-preview/${id}/view.mjs';
+createRoot(document.getElementById('root')).render(
+  React.createElement(React.StrictMode, null,
+    React.createElement(GeneratedView)
+  )
+);
+    </script>
+  </body>
+</html>`;
+    response.setHeader('Content-Type', 'text/html; charset=utf-8');
+    response.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'self' 'unsafe-inline' https://esm.sh; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' https:; connect-src 'self'; frame-ancestors 'self'");
+    response.setHeader('X-Content-Type-Options', 'nosniff');
+    response.writeHead(200);
+    response.end(html);
+    return;
+  }
+
+  // Fallback: show a nice "still generating" page
+  html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(title)} — Generating…</title>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        min-height: 100vh;
+        background: #0d1117;
+        color: #e6edf3;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      .card {
+        text-align: center;
+        max-width: 460px;
+        padding: 48px 32px;
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 16px;
+      }
+      .spinner {
+        width: 48px; height: 48px;
+        border: 3px solid #30363d;
+        border-top-color: #58a6ff;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 24px;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      h1 { font-size: 24px; margin-bottom: 8px; }
+      p { color: #8b949e; line-height: 1.5; }
+      .warn { margin-top: 16px; padding: 10px 14px; background: #2a1b00; border: 1px solid #6e4b00; border-radius: 8px; color: #f59e0b; font-size: 13px; text-align: left; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="spinner"></div>
+      <h1>${escapeHtml(title)}</h1>
+      <p>${escapeHtml(description)}</p>
+      <p style="margin-top:12px">Your configurator is being generated. This preview will update automatically — try again in a moment.</p>
+      ${transpileError ? '<div class="warn">⚠ ' + escapeHtml(transpileError) + '</div>' : ''}
+    </div>
+    <script>
+      // Auto-refresh every 8 seconds while generating
+      setInterval(() => location.reload(), 8000);
+    </script>
+  </body>
+</html>`;
+  response.setHeader('Content-Type', 'text/html; charset=utf-8');
   response.setHeader('X-Content-Type-Options', 'nosniff');
-  serveFile(requested, response);
+  response.writeHead(200);
+  response.end(html);
 }
 
 function serveExample(exampleName, assetPath, response) {
@@ -312,4 +490,13 @@ function mimeType(filePath) {
     '.webp': 'image/webp',
     '.ico': 'image/x-icon',
   }[ext] ?? 'application/octet-stream';
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"]/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+  })[char]);
 }

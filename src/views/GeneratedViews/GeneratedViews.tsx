@@ -583,7 +583,7 @@ export function GeneratedViews() {
                         </a>
                       )}
                       {activeJob.status === "generating" ||
-                      activeJob.status === "validating" ? (
+                      activeJob.status === "validating" || activeJob.status === "building" ? (
                         <button
                           onClick={() => void triggerPreview(activeJob.id)}
                           disabled={previewLoading}
@@ -591,7 +591,7 @@ export function GeneratedViews() {
                           style={pillPrimary}
                         >
                           {previewLoading
-                            ? "Building preview…"
+                            ? "Loading preview…"
                             : previewUrl
                               ? "Update preview"
                               : "Show preview"}

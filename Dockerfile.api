@@ -20,7 +20,7 @@ COPY . .
 
 RUN npm run build \
     && mkdir -p /app/data /app/generated-workspaces /app/generated-dist \
-    && chown -R node:node /app
+    && chown -R node:node /app/data /app/generated-workspaces /app/generated-dist
 
 USER node
 

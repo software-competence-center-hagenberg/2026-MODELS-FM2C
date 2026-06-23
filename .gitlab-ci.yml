@@ -1,0 +1,12 @@
+stages:
+  - publish
+include:
+  - component: $CI_SERVER_FQDN/it/devops/components/docker/build-push@v2.0.0
+    inputs:
+      stage: publish
+      image: $CI_REGISTRY_IMAGE/fm2c
+      tag: $CI_COMMIT_SHORT_SHA
+      additional-tags: "$CI_COMMIT_REF_SLUG latest"
+      dockerfile: Dockerfile
+      tags: ["fast"]
+      job-name: "build-base-fm2c-image"

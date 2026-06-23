@@ -148,16 +148,39 @@ cd spl-visualizer && npm run build && npm run server
 
 ## Docker
 
-The app can run as a single container: it serves the built trusted frontend, exposes the Node API, and keeps generated views in persistent volumes.
+The app can run as a single container: it serves the built trusted frontend, exposes the Node API, and keeps generated views in persistent volumes. Pushes to `main` publish one image from the root `Dockerfile` to `containers.github.scch.at/humace/fm2c:main`.
+
+### Direct deploy (`docker pull` + `docker run`)
+
+```bash
+docker pull containers.github.scch.at/humace/fm2c:main
+
+docker run -d \
+  -p 84:8787 \
+  -e VLLM_API_KEY=... \
+  -v fm2c-data:/app/data \
+  -v fm2c-workspaces:/app/generated-workspaces \
+  -v fm2c-dist:/app/generated-dist \
+  --restart unless-stopped \
+  --name fm2c \
+  containers.github.scch.at/humace/fm2c:main
+```
+
+The image defaults to the SCCH vLLM endpoint and model:
+```bash
+VLLM_BASE_URL=https://vllm-api.scch.at/
+VLLM_MODEL='Qwen3.6-27B-FP8 - Reasoning OFF'
+```
+
+Open: <http://localhost:84/docker/>
+
+### Local compose alternative
 
 ```bash
 cd spl-visualizer
 cp .env.example .env
-# edit .env and set VLLM_BASE_URL, VLLM_MODEL and VLLM_API_KEY
 docker compose up --build
 ```
-
-Open: <http://localhost:8787/docker/>
 
 Useful commands:
 
@@ -169,45 +192,60 @@ docker compose down -v   # also removes generated views and SQLite metadata
 
 Notes:
 
+- The container listens on `8787` internally; publish any host port you like (for example `84:8787`).
 - `Dockerfile` installs project dev dependencies intentionally, because generated configurators are Vite-built at runtime.
-- `opencode-ai` is installed globally in the image. Pin it with `OPENCODE_VERSION=1.17.7 docker compose build` if `latest` gets spicy.
+- `opencode-ai` is installed globally in the image. Pin it with `docker build --build-arg OPENCODE_VERSION=1.17.7 -t spl-visualizer .` if `latest` gets spicy.
 - Runtime state is stored in the named volumes mounted at `/app/data`, `/app/generated-workspaces`, and `/app/generated-dist`.
-
 
 
 ---
 
 ## AI Configuration
 
-The worker runs `opencode run` once per generation job. Model/provider settings are configured via environment variables in `.env`:
+The worker runs `opencode run` once per generation job. Model/provider settings can come from either direct container env vars, `.env`, or `~/.pi/agent/models.json` (using `PI_MODEL_PROVIDER`, default `llm2go`). Explicit env vars still win if both are present.
 
+Recommended for direct container deploys:
 ```bash
-VLLM_BASE_URL=https://vllm-api.scch.at/v1
-VLLM_MODEL='Qwen/Qwen3.6-27B-FP8 - Reasoning OFF'
 VLLM_API_KEY=your-api-key
+
+# defaults, override only if needed
+VLLM_BASE_URL=https://vllm-api.scch.at/
+VLLM_MODEL='Qwen3.6-27B-FP8 - Reasoning OFF'
 PI_MODEL_PROVIDER=llm2go
 ```
 
-The API key is **never** written into `opencode.json` — it's referenced as `{env:VLLM_API_KEY}` and passed only through the child process environment.
+OpenAI-compatible overrides are still supported:
+```bash
+OPENAI_API_KEY=your-api-key
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_MODEL=gpt-4.1-mini
+```
+
+The API key is **never** written into `opencode.json` — it's referenced as `{env:VLLM_API_KEY}` and passed only through the child process environment after the OpenAI/VLLM aliases are normalised.
 
 ### Useful environment variables
 
 ```bash
-# Model config
-VLLM_BASE_URL=https://vllm-api.scch.at/v1
-VLLM_MODEL='Qwen/Qwen3.6-27B-FP8 - Reasoning OFF'
+# Recommended direct-deploy config
 VLLM_API_KEY=...
+VLLM_BASE_URL=https://vllm-api.scch.at/
+VLLM_MODEL='Qwen3.6-27B-FP8 - Reasoning OFF'
+
+# OpenAI override
+OPENAI_API_KEY=...
+OPENAI_MODEL=gpt-4.1-mini
+OPENAI_BASE_URL=https://api.openai.com/v1
 
 # opencode
 OPENCODE_ENABLED=true            # Force enable (default: auto-detect)
-OPENCODE_TIMEOUT_MS=600000       # Max runtime per generation (default: 10 min)
+OPENCODE_TIMEOUT_MS=1200000       # Max runtime per generation (default: 20 min)
 OPENCODE_FALLBACK_TEMPLATE=true  # Use deterministic template instead of opencode
 ```
 
 Default opencode command:
 
 ```bash
-npx -y opencode-ai@latest run --model llm2go/<safe-model-alias> --pure <prompt>
+npx -y opencode-ai@latest run --model <provider>/<safe-model-alias> --pure <prompt>
 ```
 
 ---
@@ -255,8 +293,10 @@ if it's installed globally.
 ### Wrong model or endpoint
 
 ```bash
-node -e "import('./server/config.js').then(c => console.log({ base: c.VLLM_BASE_URL, model: c.VLLM_MODEL, provider: c.PI_MODEL_PROVIDER }))"
+node -e "import('./server/config.js').then(c => console.log(c.resolveOpencodeProviderSettings()))"
 ```
+
+That prints the final merged provider/base URL/model after OpenAI aliases, legacy `VLLM_*` envs, and Pi model config fallback have all been resolved.
 
 ### Need deterministic fallback for testing
 
