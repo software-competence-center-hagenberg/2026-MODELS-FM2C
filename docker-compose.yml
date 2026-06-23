@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
-    image: spl-visualizer-api:latest
+    image: ${IMAGE_PREFIX:-}spl-visualizer-api:latest
     ports:
       - "${PORT:-8787}:8787"
     env_file:
@@ -31,7 +31,7 @@ services:
       dockerfile: Dockerfile.worker
       args:
         OPENCODE_VERSION: ${OPENCODE_VERSION:-latest}
-    image: spl-visualizer-worker:latest
+    image: ${IMAGE_PREFIX:-}spl-visualizer-worker:latest
     env_file:
       - path: .env
         required: false
