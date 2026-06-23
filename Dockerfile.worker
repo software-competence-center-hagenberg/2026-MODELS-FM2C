@@ -28,8 +28,10 @@ COPY index.html ./index.html
 COPY vite.generated.config.ts ./vite.generated.config.ts
 COPY tsconfig*.json ./
 
-# Install iptables for egress lockdown (used by worker-entrypoint.sh under node + NET_ADMIN)
+# Install iptables for egress lockdown AND pull Debian security updates for
+# base-image packages (ncurses, perl); both images share node:22-bookworm-slim.
 RUN apt-get update \
+    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends iptables ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
