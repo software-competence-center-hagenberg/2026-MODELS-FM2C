@@ -1,36 +1,38 @@
 stages:
-    - publish
-    - security
-    - deploy
+  - publish
+  - security
+  - deploy
+
 variables:
-    HARBOR_REGISTRY: registry.scch.at
-    HARBOR_PROJECT: humace
+  HARBOR_REGISTRY: registry.scch.at
+  HARBOR_PROJECT: humace
+
 include:
-    # API container — serves the static frontend + HTTP API. No opencode needed.
-    - component: $CI_SERVER_FQDN/it/devops/components/docker/build-push@v2.0.0
-      inputs:
-          stage: publish
-          image: $CI_REGISTRY_IMAGE/spl-visualizer-api
-          tag: $CI_COMMIT_SHORT_SHA
-          additional-tags: "$CI_COMMIT_REF_SLUG:latest"
-          dockerfile: Dockerfile.api
-          tags: ["default"]
-          job-name: "build-spl-visualizer-api-image"
+  # API container — serves the static frontend + HTTP API. No opencode needed.
+  - component: $CI_SERVER_FQDN/it/devops/components/docker/build-push@v2.0.0
+    inputs:
+      stage: publish
+      image: $CI_REGISTRY_IMAGE/spl-visualizer-api
+      tag: $CI_COMMIT_SHORT_SHA
+      additional-tags: "$CI_COMMIT_REF_SLUG:latest"
+      dockerfile: Dockerfile.api
+      tags: ["default"]
+      job-name: "build-spl-visualizer-api-image"
 
-    # Worker container — runs the opencode AI agent + vite builds for generated views.
-    - component: $CI_SERVER_FQDN/it/devops/components/docker/build-push@v2.0.0
-      inputs:
-          stage: publish
-          image: $CI_REGISTRY_IMAGE/spl-visualizer-worker
-          tag: $CI_COMMIT_SHORT_SHA
-          additional-tags: "$CI_COMMIT_REF_SLUG:latest"
-          dockerfile: Dockerfile.worker
-          tags: ["default"]
-          job-name: "build-spl-visualizer-worker-image"
+  # Worker container — runs the opencode AI agent + vite builds for generated views.
+  - component: $CI_SERVER_FQDN/it/devops/components/docker/build-push@v2.0.0
+    inputs:
+      stage: publish
+      image: $CI_REGISTRY_IMAGE/spl-visualizer-worker
+      tag: $CI_COMMIT_SHORT_SHA
+      additional-tags: "$CI_COMMIT_REF_SLUG:latest"
+      dockerfile: Dockerfile.worker
+      tags: ["default"]
+      job-name: "build-spl-visualizer-worker-image"
 
-    # Security scans for the built images using Trivy.
-    - component: $CI_SERVER_FQDN/it/devops/components/security/trivy-image@v3.1.0
-      inputs:
+  # Security scans for the built images using Trivy.
+  - component: $CI_SERVER_FQDN/it/devops/components/security/trivy-image@v3.1.0
+    inputs:
       stage: security
       job-name: spl-visualizer-worker-trivy-scan
       scan-mode: registry
@@ -39,29 +41,29 @@ include:
       allow-failure: false
       tags: ["default"]
 
-    - component: $CI_SERVER_FQDN/it/devops/components/security/trivy-image@v3.1.0
-      inputs:
+  - component: $CI_SERVER_FQDN/it/devops/components/security/trivy-image@v3.1.0
+    inputs:
       stage: security
       job-name: spl-visualizer-api-trivy-scan
       scan-mode: registry
       image: "$CI_REGISTRY_IMAGE/spl-visualizer-api:latest"
       severity: "HIGH,CRITICAL"
       allow-failure: false
-      tags: ["default"] 
+      tags: ["default"]
 
-    # Deploy the images to Harbor registry.
-    - component: $CI_SERVER_FQDN/it/devops/components/publish/copy@v4.0.0
-      inputs:
-        stage: deploy
-        job-name: harbor-copy-worker
-        source-image: "$CI_REGISTRY_IMAGE/spl-visualizer-worker:latest"
-        target-image: "registry.scch.at/$HARBOR_PROJECT/spl-visualizer-worker:latest"
-        tags: ["default"]
-        
-    - component: $CI_SERVER_FQDN/it/devops/components/publish/copy@v4.0.0
-      inputs:
-        stage: deploy
-        job-name: harbor-copy-api
-        source-image: "$CI_REGISTRY_IMAGE/spl-visualizer-api:latest"
-        target-image: "registry.scch.at/$HARBOR_PROJECT/spl-visualizer-api:latest"
-        tags: ["default"]
+  # Deploy the images to Harbor registry.
+  - component: $CI_SERVER_FQDN/it/devops/components/publish/copy@v4.0.0
+    inputs:
+      stage: deploy
+      job-name: harbor-copy-worker
+      source-image: "$CI_REGISTRY_IMAGE/spl-visualizer-worker:latest"
+      target-image: "registry.scch.at/$HARBOR_PROJECT/spl-visualizer-worker:latest"
+      tags: ["default"]
+
+  - component: $CI_SERVER_FQDN/it/devops/components/publish/copy@v4.0.0
+    inputs:
+      stage: deploy
+      job-name: harbor-copy-api
+      source-image: "$CI_REGISTRY_IMAGE/spl-visualizer-api:latest"
+      target-image: "registry.scch.at/$HARBOR_PROJECT/spl-visualizer-api:latest"
+      tags: ["default"]
