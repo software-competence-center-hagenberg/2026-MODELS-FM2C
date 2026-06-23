@@ -30,37 +30,38 @@ include:
 
     # Security scans for the built images using Trivy.
     - component: $CI_SERVER_FQDN/it/devops/components/security/trivy-image@v3.1.0
-        inputs:
-        stage: security
-        job-name: spl-visualizer-worker-trivy-scan
-        scan-mode: registry
-        image: "$CI_REGISTRY_IMAGE/spl-visualizer-worker:latest"
-        severity: "HIGH,CRITICAL"
-        allow-failure: false
-        tags: ["default"]
+      inputs:
+      stage: security
+      job-name: spl-visualizer-worker-trivy-scan
+      scan-mode: registry
+      image: "$CI_REGISTRY_IMAGE/spl-visualizer-worker:latest"
+      severity: "HIGH,CRITICAL"
+      allow-failure: false
+      tags: ["default"]
 
     - component: $CI_SERVER_FQDN/it/devops/components/security/trivy-image@v3.1.0
-        inputs:
-        stage: security
-        job-name: spl-visualizer-api-trivy-scan
-        scan-mode: registry
-        image: "$CI_REGISTRY_IMAGE/spl-visualizer-api:latest"
-        severity: "HIGH,CRITICAL"
-        allow-failure: false
-        tags: ["default"] 
+      inputs:
+      stage: security
+      job-name: spl-visualizer-api-trivy-scan
+      scan-mode: registry
+      image: "$CI_REGISTRY_IMAGE/spl-visualizer-api:latest"
+      severity: "HIGH,CRITICAL"
+      allow-failure: false
+      tags: ["default"] 
 
     # Deploy the images to Harbor registry.
     - component: $CI_SERVER_FQDN/it/devops/components/publish/copy@v4.0.0
       inputs:
-          stage: deploy
-          job-name: harbor-copy-worker
-          source-image: "$CI_REGISTRY_IMAGE/spl-visualizer-worker:latest"
-          target-image: "registry.scch.at/$HARBOR_PROJECT/spl-visualizer-worker:latest"
-          tags: ["default"]
+        stage: deploy
+        job-name: harbor-copy-worker
+        source-image: "$CI_REGISTRY_IMAGE/spl-visualizer-worker:latest"
+        target-image: "registry.scch.at/$HARBOR_PROJECT/spl-visualizer-worker:latest"
+        tags: ["default"]
+        
     - component: $CI_SERVER_FQDN/it/devops/components/publish/copy@v4.0.0
       inputs:
-          stage: deploy
-          job-name: harbor-copy-api
-          source-image: "$CI_REGISTRY_IMAGE/spl-visualizer-api:latest"
-          target-image: "registry.scch.at/$HARBOR_PROJECT/spl-visualizer-api:latest"
-          tags: ["default"]
+        stage: deploy
+        job-name: harbor-copy-api
+        source-image: "$CI_REGISTRY_IMAGE/spl-visualizer-api:latest"
+        target-image: "registry.scch.at/$HARBOR_PROJECT/spl-visualizer-api:latest"
+        tags: ["default"]
