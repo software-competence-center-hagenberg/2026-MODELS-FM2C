@@ -1,24 +1,44 @@
 stages:
-  - publish
+    - publish
+    - deploy
+variables:
+    HARBOR_REGISTRY: registry.scch.at
+    HARBOR_PROJECT: humace
 include:
-  # API container — serves the static frontend + HTTP API. No opencode needed.
-  - component: $CI_SERVER_FQDN/it/devops/components/docker/build-push@v2.0.0
-    inputs:
-      stage: publish
-      image: $CI_REGISTRY_IMAGE/spl-visualizer-api
-      tag: $CI_COMMIT_SHORT_SHA
-      additional-tags: "$CI_COMMIT_REF_SLUG latest"
-      dockerfile: Dockerfile.api
-      tags: ["fast"]
-      job-name: "build-spl-visualizer-api-image"
+    # API container — serves the static frontend + HTTP API. No opencode needed.
+    - component: $CI_SERVER_FQDN/it/devops/components/docker/build-push@v2.0.0
+      inputs:
+          stage: publish
+          image: $CI_REGISTRY_IMAGE/spl-visualizer-api
+          tag: $CI_COMMIT_SHORT_SHA
+          additional-tags: "$CI_COMMIT_REF_SLUG latest"
+          dockerfile: Dockerfile.api
+          tags: ["fast"]
+          job-name: "build-spl-visualizer-api-image"
 
-  # Worker container — runs the opencode AI agent + vite builds for generated views.
-  - component: $CI_SERVER_FQDN/it/devops/components/docker/build-push@v2.0.0
-    inputs:
-      stage: publish
-      image: $CI_REGISTRY_IMAGE/spl-visualizer-worker
-      tag: $CI_COMMIT_SHORT_SHA
-      additional-tags: "$CI_COMMIT_REF_SLUG latest"
-      dockerfile: Dockerfile.worker
-      tags: ["fast"]
-      job-name: "build-spl-visualizer-worker-image"
+    # Worker container — runs the opencode AI agent + vite builds for generated views.
+    - component: $CI_SERVER_FQDN/it/devops/components/docker/build-push@v2.0.0
+      inputs:
+          stage: publish
+          image: $CI_REGISTRY_IMAGE/spl-visualizer-worker
+          tag: $CI_COMMIT_SHORT_SHA
+          additional-tags: "$CI_COMMIT_REF_SLUG latest"
+          dockerfile: Dockerfile.worker
+          tags: ["fast"]
+          job-name: "build-spl-visualizer-worker-image"
+    - component: $CI_SERVER_FQDN/it/devops/components/publish/copy@v4.0.0
+      inputs:
+          stage: deploy
+          job-name: harbor-copy
+          source-image: "$CI_REGISTRY_IMAGE/spl-visualizer-worker:$CI_COMMIT_TAG"
+          target-image: "registry.scch.at/$HARBOR_PROJECT/spl-visualizer-worker:$CI_COMMIT_TAG"
+          additional-target-tags: "latest"
+          tags: ["fast"]
+    - component: $CI_SERVER_FQDN/it/devops/components/publish/copy@v4.0.0
+      inputs:
+          stage: deploy
+          job-name: harbor-copy
+          source-image: "$CI_REGISTRY_IMAGE/spl-visualizer-api:$CI_COMMIT_TAG"
+          target-image: "registry.scch.at/$HARBOR_PROJECT/spl-visualizer-api:$CI_COMMIT_TAG"
+          additional-target-tags: "latest"
+          tags: ["fast"]
