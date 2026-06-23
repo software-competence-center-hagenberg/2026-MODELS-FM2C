@@ -1,5 +1,6 @@
 stages:
     - publish
+    - security
     - deploy
 variables:
     HARBOR_REGISTRY: registry.scch.at
@@ -26,6 +27,28 @@ include:
           dockerfile: Dockerfile.worker
           tags: ["fast"]
           job-name: "build-spl-visualizer-worker-image"
+
+    - component: $CI_SERVER_FQDN/it/devops/components/security/trivy-image@v3.1.0
+        inputs:
+        stage: security
+        job-name: spl-visualizer-worker-trivy-scan
+        scan-mode: registry
+        image: "$CI_REGISTRY_IMAGE/spl-visualizer-worker:latest"
+        severity: "HIGH,CRITICAL"
+        allow-failure: true
+        tags: ["fast"]
+
+    - component: $CI_SERVER_FQDN/it/devops/components/security/trivy-image@v3.1.0
+        inputs:
+        stage: security
+        job-name: spl-visualizer-api-trivy-scan
+        scan-mode: registry
+        image: "$CI_REGISTRY_IMAGE/spl-visualizer-api:latest"
+        severity: "HIGH,CRITICAL"
+        allow-failure: true
+        tags: ["fast"] 
+
+
     - component: $CI_SERVER_FQDN/it/devops/components/publish/copy@v4.0.0
       inputs:
           stage: deploy
