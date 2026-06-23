@@ -51,6 +51,15 @@ include:
       allow-failure: false
       tags: ["default"]
 
+  - component: $CI_SERVER_FQDN/it/devops/components/security/trivy-fs@v3.1.0
+    inputs:
+      stage: security
+      job-name: trivy-fs
+      scan-path: "."
+      severity: "HIGH,CRITICAL"
+      allow-failure: false
+      tags: ["default"]
+
   # Deploy the images to Harbor registry.
   - component: $CI_SERVER_FQDN/it/devops/components/publish/copy@v4.0.0
     inputs:
