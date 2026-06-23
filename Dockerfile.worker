@@ -36,7 +36,12 @@ RUN apt-get update \
 # Create runtime directories; only chown the writable data dirs to node.
 # The rest of /app stays root-owned so node can READ but not WRITE server/src/etc.
 RUN mkdir -p /app/data /app/generated-workspaces /app/generated-dist \
-    && chown -R node:node /app/data /app/generated-workspaces /app/generated-dist
+    /app/node_modules/.vite-temp \
+    && chown -R node:node /app/data /app/generated-workspaces /app/generated-dist /app/node_modules/.vite-temp
+# ponytail: .vite-temp is Vite's scratch dir for bundling vite.generated.config.ts;
+# without a node-writable .vite-temp it falls back to writing a .timestamp-*.mjs next
+# to the root-owned config in /app -> EACCES at runtime (node runs the generated build).
+# Only this scratch dir is delegated; /app + node_modules stay root-owned/read-only.
 
 # Egress lockdown script — runs as node + CAP_NET_ADMIN, sets iptables rules
 # before exec'ing the worker so the agent cannot reach the open internet.
