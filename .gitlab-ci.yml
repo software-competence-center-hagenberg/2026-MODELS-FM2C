@@ -14,7 +14,7 @@ include:
           tag: $CI_COMMIT_SHORT_SHA
           additional-tags: "$CI_COMMIT_REF_SLUG latest"
           dockerfile: Dockerfile.api
-          tags: ["fast"]
+          tags: ["default"]
           job-name: "build-spl-visualizer-api-image"
 
     # Worker container — runs the opencode AI agent + vite builds for generated views.
@@ -25,9 +25,10 @@ include:
           tag: $CI_COMMIT_SHORT_SHA
           additional-tags: "$CI_COMMIT_REF_SLUG latest"
           dockerfile: Dockerfile.worker
-          tags: ["fast"]
+          tags: ["default"]
           job-name: "build-spl-visualizer-worker-image"
 
+    # Security scans for the built images using Trivy.
     - component: $CI_SERVER_FQDN/it/devops/components/security/trivy-image@v3.1.0
         inputs:
         stage: security
@@ -35,8 +36,8 @@ include:
         scan-mode: registry
         image: "$CI_REGISTRY_IMAGE/spl-visualizer-worker:latest"
         severity: "HIGH,CRITICAL"
-        allow-failure: true
-        tags: ["fast"]
+        allow-failure: false
+        tags: ["default"]
 
     - component: $CI_SERVER_FQDN/it/devops/components/security/trivy-image@v3.1.0
         inputs:
@@ -45,21 +46,21 @@ include:
         scan-mode: registry
         image: "$CI_REGISTRY_IMAGE/spl-visualizer-api:latest"
         severity: "HIGH,CRITICAL"
-        allow-failure: true
-        tags: ["fast"] 
+        allow-failure: false
+        tags: ["default"] 
 
-
+    # Deploy the images to Harbor registry.
     - component: $CI_SERVER_FQDN/it/devops/components/publish/copy@v4.0.0
       inputs:
           stage: deploy
           job-name: harbor-copy-worker
           source-image: "$CI_REGISTRY_IMAGE/spl-visualizer-worker:latest"
           target-image: "registry.scch.at/$HARBOR_PROJECT/spl-visualizer-worker:latest"
-          tags: ["fast"]
+          tags: ["default"]
     - component: $CI_SERVER_FQDN/it/devops/components/publish/copy@v4.0.0
       inputs:
           stage: deploy
           job-name: harbor-copy-api
           source-image: "$CI_REGISTRY_IMAGE/spl-visualizer-api:latest"
           target-image: "registry.scch.at/$HARBOR_PROJECT/spl-visualizer-api:latest"
-          tags: ["fast"]
+          tags: ["default"]
