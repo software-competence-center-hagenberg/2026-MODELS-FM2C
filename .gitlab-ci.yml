@@ -10,3 +10,21 @@ include:
       dockerfile: Dockerfile
       tags: ["fast"]
       job-name: "build-base-fm2c-image"
+  - component: $CI_SERVER_FQDN/it/devops/components/docker/build-push@v2.0.0
+    inputs:
+      stage: publish
+      image: $CI_REGISTRY_IMAGE/fm2c.api
+      tag: $CI_COMMIT_SHORT_SHA
+      additional-tags: "$CI_COMMIT_REF_SLUG latest"
+      dockerfile: Dockerfile.api
+      tags: ["fast"]
+      job-name: "build-base-fm2c-api-image"
+  - component: $CI_SERVER_FQDN/it/devops/components/docker/build-push@v2.0.0
+    inputs:
+      stage: publish
+      image: $CI_REGISTRY_IMAGE/fm2c.worker
+      tag: $CI_COMMIT_SHORT_SHA
+      additional-tags: "$CI_COMMIT_REF_SLUG latest"
+      dockerfile: Dockerfile.worker
+      tags: ["fast"]
+      job-name: "build-base-fm2c-worker-image"
