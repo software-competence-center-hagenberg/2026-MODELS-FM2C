@@ -29,7 +29,7 @@ include:
     - component: $CI_SERVER_FQDN/it/devops/components/publish/copy@v4.0.0
       inputs:
           stage: deploy
-          job-name: harbor-copy
+          job-name: harbor-copy-worker
           source-image: "$CI_REGISTRY_IMAGE/spl-visualizer-worker:$CI_COMMIT_TAG"
           target-image: "registry.scch.at/$HARBOR_PROJECT/spl-visualizer-worker:$CI_COMMIT_TAG"
           additional-target-tags: "latest"
@@ -37,7 +37,7 @@ include:
     - component: $CI_SERVER_FQDN/it/devops/components/publish/copy@v4.0.0
       inputs:
           stage: deploy
-          job-name: harbor-copy
+          job-name: harbor-copy-api
           source-image: "$CI_REGISTRY_IMAGE/spl-visualizer-api:$CI_COMMIT_TAG"
           target-image: "registry.scch.at/$HARBOR_PROJECT/spl-visualizer-api:$CI_COMMIT_TAG"
           additional-target-tags: "latest"
