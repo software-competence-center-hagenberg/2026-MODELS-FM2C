@@ -1,0 +1,17 @@
+{
+  "lastChangelogVersion": "0.79.6",
+  "defaultProvider": "llm2go",
+  "defaultModel": "Qwen/Qwen3.6-27B-FP8 - Reasoning OFF",
+  "hideThinkingBlock": true,
+  "theme": "intellij-dark",
+  "quietStartup": true,
+  "packages": [
+    "git:github.com/offline-ant/pi-tmux",
+    "git:github.com/ferologics/pi-notify",
+    "npm:@aliou/pi-guardrails",
+    "npm:pi-mcp-adapter@2.5.4"
+  ],
+  "defaultThinkingLevel": "medium",
+  "enableInstallTelemetry": false,
+  "editorPaddingX": 1
+}
