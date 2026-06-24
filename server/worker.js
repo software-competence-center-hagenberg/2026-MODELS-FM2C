@@ -9,7 +9,6 @@ import {
   APP_ROOT,
   DIST_DIR,
   ID_PATTERN,
-  OPENCODE_FALLBACK_TEMPLATE,
   MAX_FILE_BYTES,
   MAX_PROMPT_CHARS,
   VIEW_TTL_HOURS,
@@ -152,49 +151,39 @@ export class GenerationWorker {
     const workspaceDir = path.resolve(WORKSPACES_DIR, view.id);
     const viewPath = path.join(workspaceDir, 'src', 'View.tsx');
 
-    if (isOpencodeAvailable()) {
-      try {
-        this.setStatus(view.id, 'generating', 'AI generation in progress — running opencode agent.');
-        await runOpencode(workspaceDir, view, files, (line) => {
-          this.events.publish(view.id, { status: 'generating', message: `> ${line}` });
-        });
-        // Check whether opencode actually produced anything beyond the placeholder
-        const result = fs.readFileSync(viewPath, 'utf8');
-        if (result.includes('// Placeholder — opencode will replace this content.')) {
-          console.warn('[spl-visualizer] opencode left stub behind, falling back to template.');
-        } else {
-          return;
-        }
-      } catch (opencodeError) {
-        const message = opencodeError instanceof Error ? opencodeError.message : String(opencodeError);
-        console.warn('[spl-visualizer] opencode run failed, attempting partial recovery:', message);
+    if (!isOpencodeAvailable()) {
+      throw new Error('opencode is not available. Install it or set OPENCODE_BIN/OPENCODE_ARGS so generation can run.');
+    }
 
-        // --- Graceful partial recovery ---
-        if (fs.existsSync(viewPath)) {
-          const partialSource = fs.readFileSync(viewPath, 'utf8');
-          if (!partialSource.includes('// Placeholder — opencode will replace this content.')) {
-            try {
-              validateGeneratedView(workspaceDir, view.title);
-              console.log('[spl-visualizer] partial recovery succeeded — recovered valid View.tsx after opencode failure.');
-              return;
-            } catch (validationError) {
-              console.warn('[spl-visualizer] partial recovery failed validation:', validationError.message);
-            }
+    try {
+      this.setStatus(view.id, 'generating', 'AI generation in progress — running opencode agent.');
+      await runOpencode(workspaceDir, view, files, (line) => {
+        this.events.publish(view.id, { status: 'generating', message: `> ${line}` });
+      });
+
+      const result = fs.readFileSync(viewPath, 'utf8');
+      if (result.includes('// Placeholder — opencode will replace this content.')) {
+        throw new Error('opencode finished without replacing src/View.tsx. Failing loudly instead of emitting a fake fallback configurator.');
+      }
+    } catch (opencodeError) {
+      const message = opencodeError instanceof Error ? opencodeError.message : String(opencodeError);
+      console.warn('[spl-visualizer] opencode run failed, attempting partial recovery:', message);
+
+      if (fs.existsSync(viewPath)) {
+        const partialSource = fs.readFileSync(viewPath, 'utf8');
+        if (!partialSource.includes('// Placeholder — opencode will replace this content.')) {
+          try {
+            validateGeneratedView(workspaceDir, view.title);
+            console.log('[spl-visualizer] partial recovery succeeded — recovered valid View.tsx after opencode failure.');
+            return;
+          } catch (validationError) {
+            console.warn('[spl-visualizer] partial recovery failed validation:', validationError.message);
           }
         }
-
-        if (!OPENCODE_FALLBACK_TEMPLATE) {
-          throw new Error(`opencode generation failed: ${message}`);
-        }
-        console.warn('[spl-visualizer] falling back to template after opencode failure:', message);
       }
-    }
-    if (!isOpencodeAvailable() && !OPENCODE_FALLBACK_TEMPLATE) {
-      throw new Error('opencode is not available. Install it, set OPENCODE_BIN/OPENCODE_ARGS, or set OPENCODE_FALLBACK_TEMPLATE=true for the deterministic template fallback.');
-    }
 
-    const source = generateViewSource(view, files);
-    fs.writeFileSync(viewPath, source);
+      throw new Error(`opencode generation failed: ${message}`);
+    }
   }
 
   async validating(view) {
@@ -262,20 +251,6 @@ export class GenerationWorker {
 }
 
 
-function generateViewSource(view, files) {
-  const fileSummaries = files.map((file) => ({
-    name: file.name,
-    type: file.type,
-    size: file.size,
-    preview: summariseContent(file.content),
-  }));
-  const options = deriveOptions(view.prompt, files);
-  const stages = deriveStages(view.prompt, files);
-  const accent = colourFromId(view.id);
-
-  return `import { useMemo, useState } from 'react';\n\nexport const meta = {\n  title: ${JSON.stringify(view.title)},\n  description: ${JSON.stringify(view.description)}\n};\n\ntype Option = { id: string; label: string; description: string; group: string; recommended: boolean };\ntype Stage = { name: string; detail: string };\n\nconst prompt = ${JSON.stringify(view.prompt)};\nconst uploadedFiles = ${JSON.stringify(fileSummaries, null, 2)} satisfies Array<{ name: string; type: string; size: number; preview: string }>;\nconst options = ${JSON.stringify(options, null, 2)} satisfies Option[];\nconst stages = ${JSON.stringify(stages, null, 2)} satisfies Stage[];\nconst accent = ${JSON.stringify(accent)};\n\nexport default function GeneratedView() {\n  const [selected, setSelected] = useState(() => new Set(options.filter((option) => option.recommended).map((option) => option.id)));\n  const [activeGroup, setActiveGroup] = useState('all');\n  const groups = useMemo(() => ['all', ...Array.from(new Set(options.map((option) => option.group)))], []);\n  const visibleOptions = activeGroup === 'all' ? options : options.filter((option) => option.group === activeGroup);\n  const selectedOptions = options.filter((option) => selected.has(option.id));\n\n  function toggle(id: string) {\n    setSelected((current) => {\n      const next = new Set(current);\n      if (next.has(id)) next.delete(id);\n      else next.add(id);\n      return next;\n    });\n  }\n\n  return (\n    <main style={{ minHeight: '100vh', background: '#0f172a', color: '#e2e8f0', fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif' }}>\n      <section style={{ padding: '42px clamp(18px, 4vw, 64px)', background: \`linear-gradient(135deg, \${accent}, #111827 58%, #020617)\` }}>\n        <div style={{ maxWidth: 1120, margin: '0 auto' }}>\n          <p style={{ margin: '0 0 10px', color: '#bfdbfe', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', fontSize: 12 }}>Generated configurator</p>\n          <h1 style={{ margin: 0, fontSize: 'clamp(34px, 6vw, 72px)', lineHeight: 0.95, letterSpacing: '-0.06em' }}>{meta.title}</h1>\n          <p style={{ maxWidth: 780, margin: '18px 0 0', color: '#cbd5e1', fontSize: 18 }}>{meta.description}</p>\n        </div>\n      </section>\n\n      <section style={{ maxWidth: 1120, margin: '0 auto', padding: '28px clamp(18px, 4vw, 64px) 54px', display: 'grid', gap: 18 }}>\n        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>\n          <Metric label="Selected modules" value={selected.size} />\n          <Metric label="Available options" value={options.length} />\n          <Metric label="Uploaded files" value={uploadedFiles.length} />\n        </div>\n\n        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.35fr) minmax(280px, 0.65fr)', gap: 18, alignItems: 'start' }}>\n          <section style={panelStyle}>\n            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>\n              <div>\n                <h2 style={headingStyle}>Configurator options</h2>\n                <p style={mutedStyle}>Toggle the generated features below. The default picks are based on the request and uploaded settings.</p>\n              </div>\n              <select value={activeGroup} onChange={(event) => setActiveGroup(event.target.value)} style={selectStyle}>\n                {groups.map((group) => <option key={group} value={group}>{group === 'all' ? 'All groups' : group}</option>)}\n              </select>\n            </div>\n            <div style={{ display: 'grid', gap: 12 }}>\n              {visibleOptions.map((option) => (\n                <button key={option.id} onClick={() => toggle(option.id)} style={{ ...optionStyle, borderColor: selected.has(option.id) ? accent : '#334155', background: selected.has(option.id) ? 'rgba(59, 130, 246, 0.16)' : '#111827' }}>\n                  <span style={{ width: 22, height: 22, borderRadius: 999, border: \`2px solid \${selected.has(option.id) ? accent : '#64748b'}\`, display: 'grid', placeItems: 'center', flex: '0 0 auto' }}>{selected.has(option.id) ? '✓' : ''}</span>\n                  <span style={{ textAlign: 'left' }}>\n                    <strong style={{ display: 'block', color: '#f8fafc' }}>{option.label}</strong>\n                    <small style={{ color: '#94a3b8' }}>{option.description}</small>\n                  </span>\n                </button>\n              ))}\n            </div>\n          </section>\n\n          <aside style={{ display: 'grid', gap: 18 }}>\n            <section style={panelStyle}>\n              <h2 style={headingStyle}>Deployment stages</h2>\n              <div style={{ display: 'grid', gap: 10 }}>\n                {stages.map((stage, index) => (\n                  <div key={stage.name} style={{ display: 'grid', gridTemplateColumns: '34px 1fr', gap: 10 }}>\n                    <div style={{ width: 30, height: 30, borderRadius: 999, background: accent, display: 'grid', placeItems: 'center', fontWeight: 900 }}>{index + 1}</div>\n                    <div>\n                      <strong style={{ color: '#f8fafc' }}>{stage.name}</strong>\n                      <p style={{ ...mutedStyle, margin: '2px 0 0' }}>{stage.detail}</p>\n                    </div>\n                  </div>\n                ))}\n              </div>\n            </section>\n\n            <section style={panelStyle}>\n              <h2 style={headingStyle}>Summary</h2>\n              <pre style={codeStyle}>{JSON.stringify({ selected: selectedOptions.map((option) => option.label), sourceFiles: uploadedFiles.map((file) => file.name) }, null, 2)}</pre>\n            </section>\n          </aside>\n        </div>\n\n        <section style={panelStyle}>\n          <h2 style={headingStyle}>Original request</h2>\n          <p style={{ whiteSpace: 'pre-wrap', color: '#cbd5e1' }}>{prompt}</p>\n          {uploadedFiles.length > 0 && (\n            <div style={{ marginTop: 16, display: 'grid', gap: 10 }}>\n              {uploadedFiles.map((file) => (\n                <details key={file.name} style={{ background: '#020617', border: '1px solid #1e293b', borderRadius: 14, padding: 12 }}>\n                  <summary style={{ cursor: 'pointer', color: '#f8fafc', fontWeight: 800 }}>{file.name} <span style={{ color: '#64748b', fontWeight: 500 }}>({Math.ceil(file.size / 1024)} KB)</span></summary>\n                  <pre style={codeStyle}>{file.preview}</pre>\n                </details>\n              ))}\n            </div>\n          )}\n        </section>\n      </section>\n    </main>\n  );\n}\n\nfunction Metric({ label, value }: { label: string; value: number }) {\n  return (\n    <div style={panelStyle}>\n      <div style={{ color: '#94a3b8', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 800 }}>{label}</div>\n      <div style={{ color: '#f8fafc', fontSize: 34, fontWeight: 900, letterSpacing: '-0.04em' }}>{value}</div>\n    </div>\n  );\n}\n\nconst panelStyle = { background: 'rgba(15, 23, 42, 0.88)', border: '1px solid #1e293b', borderRadius: 22, padding: 18, boxShadow: '0 18px 50px rgba(2, 6, 23, 0.35)' } as const;\nconst headingStyle = { margin: '0 0 8px', color: '#f8fafc', fontSize: 18 } as const;\nconst mutedStyle = { margin: 0, color: '#94a3b8', fontSize: 13 } as const;\nconst optionStyle = { width: '100%', border: '1px solid #334155', borderRadius: 16, padding: 14, color: '#e2e8f0', cursor: 'pointer', display: 'flex', gap: 12, alignItems: 'flex-start' } as const;\nconst selectStyle = { background: '#020617', color: '#e2e8f0', border: '1px solid #334155', borderRadius: 12, padding: '10px 12px' } as const;\nconst codeStyle = { margin: '10px 0 0', padding: 12, overflow: 'auto', borderRadius: 14, background: '#020617', border: '1px solid #1e293b', color: '#bfdbfe', fontSize: 12 } as const;\n`;
-}
-
 export async function runGeneratedBuild(id) {
   return await runViteBuild(id, false);
 }
@@ -329,55 +304,14 @@ function prepareWritableViteConfig(id, preview) {
   fs.copyFileSync(path.join(APP_ROOT, 'vite.generated.config.ts'), configPath);
   return configPath;
 }
+
 function deriveTitle(prompt) {
   const firstLine = prompt.split(/\r?\n/).map((line) => line.trim()).find(Boolean) ?? 'Generated Configurator';
   return titleCase(firstLine.replace(/^create\s+(a\s+)?/i, '').slice(0, 58) || 'Generated Configurator');
 }
 
-function deriveOptions(prompt, files) {
-  const text = `${prompt}\n${files.map((file) => `${file.name}\n${file.content}`).join('\n')}`;
-  const candidates = Array.from(new Set((text.match(/[A-Z]?[a-z][a-z0-9-]{2,}(?:\s+[A-Z]?[a-z][a-z0-9-]{2,})?/g) ?? [])
-    .map((item) => item.trim())
-    .filter((item) => !/^(create|this|that|with|from|file|view|show|selectable|settings|configuration|configurator)$/i.test(item))
-    .slice(0, 9)));
-  const fallback = ['Authentication', 'Database', 'API Gateway', 'Monitoring', 'Backup', 'Deployment Pipeline'];
-  const labels = (candidates.length >= 4 ? candidates : fallback).slice(0, 9);
-  return labels.map((label, index) => ({
-    id: slugify(label) || `option-${index + 1}`,
-    label: titleCase(label),
-    description: `Generated option inferred from ${files[index % Math.max(files.length, 1)]?.name ?? 'the prompt'}.`,
-    group: ['Core', 'Integration', 'Operations'][index % 3],
-    recommended: index < Math.ceil(labels.length / 2),
-  }));
-}
-
-function deriveStages(prompt, files) {
-  const lower = `${prompt} ${files.map((file) => file.content).join(' ')}`.toLowerCase();
-  const stages = [
-    { name: 'Analyse inputs', detail: files.length ? 'Review uploaded documentation and settings.' : 'Use the chat prompt as the primary source.' },
-    { name: 'Choose features', detail: 'Select the modules that should be active in the generated configuration.' },
-    { name: lower.includes('deploy') ? 'Deploy' : 'Review', detail: lower.includes('deploy') ? 'Prepare the selected setup for deployment.' : 'Check the generated selection before exporting.' },
-  ];
-  if (lower.includes('test') || lower.includes('validate')) stages.splice(2, 0, { name: 'Validate', detail: 'Run a validation pass against selected constraints.' });
-  return stages;
-}
-
-function summariseContent(content) {
-  const clean = String(content ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').trim();
-  return clean.length > 1600 ? `${clean.slice(0, 1600)}\n…` : clean;
-}
-
-function colourFromId(id) {
-  const colours = ['#2563eb', '#7c3aed', '#db2777', '#0891b2', '#059669', '#ea580c'];
-  return colours[[...id].reduce((sum, char) => sum + char.charCodeAt(0), 0) % colours.length];
-}
-
 function titleCase(value) {
   return String(value).replace(/[-_]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function slugify(value) {
-  return String(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
 

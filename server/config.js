@@ -35,8 +35,6 @@ export const OPENCODE_ENABLED =
     : process.env.OPENCODE_ENABLED === '1' || process.env.OPENCODE_ENABLED === 'true'
       ? true
       : undefined; // undefined = auto-detect
-export const OPENCODE_FALLBACK_TEMPLATE =
-  process.env.OPENCODE_FALLBACK_TEMPLATE === '1' || process.env.OPENCODE_FALLBACK_TEMPLATE === 'true';
 
 const detectedOpencodeBin = commandWorks('opencode', ['--version']) ? 'opencode' : 'npx';
 export const OPENCODE_BIN = process.env.OPENCODE_BIN ?? detectedOpencodeBin;

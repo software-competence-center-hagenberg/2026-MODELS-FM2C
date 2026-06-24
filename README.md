@@ -72,12 +72,9 @@ Spawns `opencode run --pure <prompt>` as a child process with a 20-minute timeou
 - The user's request (sanitised, wrapped in opaque nonced tags to prevent prompt injection)
 - Uploaded file contents (capped at per-file and total char budgets)
 - Requirements: export `meta`, export default component, self-contained React, no blocked APIs
+- Explicit tool instructions: use `edit` on the existing `src/View.tsx`; do not try `write`/`bash`
 
-Output from opencode is streamed to the browser via SSE line by line.
-
-**Fallback path — deterministic template**:
-If opencode is unavailable (auto-detected) or fails, a deterministic template generator in `generateViewSource()` produces a basic configurator. It parses the prompt with regex to extract option labels, groups them into categories, and generates a dark-themed dashboard. Controlled by `OPENCODE_FALLBACK_TEMPLATE=true`.
-
+Output from opencode is streamed to the browser via SSE line by line. If opencode fails or leaves the placeholder behind, the job now **fails loudly** instead of emitting a deterministic fake configurator.
 ### 4. Validating (`server/validation.js`)
 A multi-layer gate:
 
@@ -262,7 +259,6 @@ The API key flows through `OPENAI_API_KEY` and `VLLM_API_KEY` env vars (both sup
 | `VALKEY_URL` | `redis://valkey:6379` | Valkey connection string |
 | `OPENCODE_ENABLED` | auto-detect | Force enable/disable opencode |
 | `OPENCODE_TIMEOUT_MS` | 1200000 (20 min) | Max runtime per generation |
-| `OPENCODE_FALLBACK_TEMPLATE` | false | Use deterministic template |
 | `OPENCODE_VERSION` | latest | opencode-ai npm version for Docker build |
 | `GENERATED_VIEW_TTL_HOURS` | 168 (7 days) | View retention |
 | `MAX_FILE_PROMPT_CHARS` | 1500 | Per-file char budget in LLM prompt |
