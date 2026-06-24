@@ -2,7 +2,7 @@
 
 # Worker container — runs opencode AI agent + vite builds for generated views
 # Needs full deps including opencode and vite
-FROM node:22-bookworm-slim
+FROM node:22-trixie-slim
 
 WORKDIR /app
 
@@ -14,9 +14,13 @@ ENV NODE_ENV=production \
 
 COPY package.json package-lock.json ./
 
-# Install ALL deps (including dev) because worker runs vite builds at runtime
+# Install ALL deps (including dev) because worker runs vite builds at runtime.
+# Refresh npm first: the node image's bundled npm ships an unpatched picomatch
+# 4.0.3 (CVE-2026-33671). npm 11+ doesn't bundle picomatch, so upgrading clears it.
+# Worker genuinely needs npm at runtime (opencode-ai install + vite builds), unlike API.
 ARG OPENCODE_VERSION=latest
-RUN npm ci --include=dev \
+RUN npm install -g npm@latest \
+    && npm ci --include=dev \
     && npm install -g "opencode-ai@${OPENCODE_VERSION}" \
     && npm cache clean --force
 
@@ -29,7 +33,7 @@ COPY vite.generated.config.ts ./vite.generated.config.ts
 COPY tsconfig*.json ./
 
 # Install iptables for egress lockdown AND pull Debian security updates for
-# base-image packages (ncurses, perl); both images share node:22-bookworm-slim.
+# base-image packages; both images share node:22-trixie-slim.
 RUN apt-get update \
     && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends iptables ca-certificates \
@@ -38,7 +42,12 @@ RUN apt-get update \
 # Create runtime directories; only chown the writable data dirs to node.
 # The rest of /app stays root-owned so node can READ but not WRITE server/src/etc.
 RUN mkdir -p /app/data /app/generated-workspaces /app/generated-dist \
-    && chown -R node:node /app/data /app/generated-workspaces /app/generated-dist
+    /app/node_modules/.vite-temp \
+    && chown -R node:node /app/data /app/generated-workspaces /app/generated-dist /app/node_modules/.vite-temp
+# ponytail: .vite-temp is Vite's scratch dir for bundling vite.generated.config.ts;
+# without a node-writable .vite-temp it falls back to writing a .timestamp-*.mjs next
+# to the root-owned config in /app -> EACCES at runtime (node runs the generated build).
+# Only this scratch dir is delegated; /app + node_modules stay root-owned/read-only.
 
 # Egress lockdown script — runs as node + CAP_NET_ADMIN, sets iptables rules
 # before exec'ing the worker so the agent cannot reach the open internet.

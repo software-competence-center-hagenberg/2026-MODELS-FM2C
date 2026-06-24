@@ -195,7 +195,7 @@ export function runOpencode(workspaceDir, view, files, onEvent) {
       } else {
         reject(
           new Error(
-            `opencode exited with code ${code}. ${output.slice(-3000)}`,
+            `opencode exited with code ${code} and did not produce a valid View.tsx.`,
           ),
         );
       }
@@ -301,7 +301,6 @@ export function runOpencodeEnhance(workspaceDir, view, instructions, onEvent) {
       clearTimeout(timer);
       reject(new Error(`opencode enhance failed to start: ${error.message}`));
     });
-
     child.on("close", (code) => {
       clearTimeout(timer);
       if (code === 0) {
@@ -309,7 +308,7 @@ export function runOpencodeEnhance(workspaceDir, view, instructions, onEvent) {
       } else {
         reject(
           new Error(
-            `opencode enhance exited with code ${code}. ${output.slice(-3000)}`,
+            `opencode enhance exited with code ${code} and did not produce a valid View.tsx.`,
           ),
         );
       }

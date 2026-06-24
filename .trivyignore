@@ -1,0 +1,29 @@
+# Trivy ignore list — CVEs that have NO fixed package on any current Debian
+# release today (verified via trivy image scan of node:22-trixie-slim on
+# 2026-06-23). Each entry is temporary: when Debian ships a patched package
+# these lines must be deleted so the CI gate (trivy-image, severity HIGH/CRITICAL,
+# allow-failure false) catches regressions again.
+#
+# This is NOT a blanket suppress — only CVEs with no upstream fix available
+# anywhere are listed. Fixable vulns (e.g. picomatch CVE-2026-33671, fixed in
+# 4.0.4) are resolved at source instead (see Dockerfile.{api,worker}).
+
+# ncurses: buffer overflow -> arbitrary code execution.
+# Affected on both bookworm (6.4-4) and trixie (6.5+20250216-2). No patched
+# ncurses package exists in any Debian suite yet.
+CVE-2025-69720
+
+# perl Archive::Tar / IO::Compress family (2026 CVEs, upstream perl not yet
+# patched / Debian fix deferred). All present on trixie perl-base 5.40.1-6.
+CVE-2026-42496   # Archive::Tar path traversal via crafted symlinks (CRITICAL, fix_deferred)
+CVE-2026-8376    # perl heap buffer overflow when compiling (CRITICAL, affected — no fix)
+CVE-2026-42497   # Archive::Tar arbitrary file mod via crafted hardlinks (HIGH, fix_deferred)
+CVE-2026-48962   # IO::Compress arbitrary code exec via attacker-controlled output glob (HIGH, affected)
+CVE-2026-9538    # Archive::Tar memory exhaustion (HIGH, fix_deferred)
+
+# libsqlite3-0: introduced by the trixie base (not present on bookworm). No
+# fixed package in Debian yet. Accepted as part of the trixie rebase because
+# trixie is current stable and will receive the patch; bookworm alternative
+# carries zlib1g CVE-2023-45853 (will_not_fix) forever instead.
+CVE-2026-11822
+CVE-2026-11824
