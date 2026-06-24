@@ -11,10 +11,10 @@ You are generating exactly one file: `src/View.tsx`. Build the user's requested 
 
 ## Tooling in this workspace
 
-- Use `read`, `grep`, and `glob` to inspect files if needed.
+- Use `read`, `grep`, `glob`, and `list` to inspect files if needed.
 - Use `edit` to replace the contents of `src/View.tsx`.
 - There is **no** `write` tool for this job.
-- Do **not** try to use `bash`, `task`, `question`, `skill`, or `todowrite`. They are unavailable or blocked here.
+- Do **not** try to use `bash`, `task`, `question`, `skill`, or `todowrite` for this job.
 
 ## What to build
 

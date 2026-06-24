@@ -69,14 +69,21 @@ export function buildOpencodeConfig() {
       },
       glob: "allow",
       grep: "allow",
+      list: "allow",
       bash: {
         "*": "deny",
       },
+      task: "deny",
+      question: "deny",
+      external_directory: "deny",
       webfetch: "deny",
       websearch: "deny",
-      task: "deny",
-      external_directory: "deny",
-      question: "deny",
+      lsp: "deny",
+      skill: "deny",
+      todowrite: "deny",
+    },
+    experimental: {
+      primary_tools: ["edit", "read", "grep", "glob", "list"],
     },
   };
 }
@@ -108,8 +115,8 @@ ${userRequest.text}${fileContext.text}
 
 Workspace/tool rules:
 - src/View.tsx already exists. Replace its full contents using the edit tool.
-- Available tools for this job are read, grep, glob, and edit.
-- Do NOT try to use write, bash, task, question, skill, or todowrite. They are unavailable or blocked here.
+- Available tools for this job are read, grep, glob, list, and edit.
+- Do NOT try to use write, bash, task, question, skill, or todowrite for this job.
 - Implement the requested product literally. Do not turn prompt phrases into fake feature toggles or selector labels unless the user explicitly asked for that UI.
 
 Requirements:
@@ -235,8 +242,8 @@ ${currentSource}
 
 Workspace/tool rules:
 - Keep editing the existing src/View.tsx file with the edit tool.
-- Available tools for this job are read, grep, glob, and edit.
-- Do NOT try to use write, bash, task, question, skill, or todowrite. They are unavailable or blocked here.
+- Available tools for this job are read, grep, glob, list, and edit.
+- Do NOT try to use write, bash, task, question, skill, or todowrite for this job.
 - Apply the user's requested behaviour directly; do not degrade the view into generic prompt-derived toggle labels.
 
 Requirements:
@@ -365,7 +372,6 @@ function createOpencodeEnv(providerSettings, configPath) {
     OPENCODE_CONFIG: configPath,
     OPENCODE_DISABLE_AUTOUPDATE: "true",
     OPENCODE_DISABLE_MODELS_FETCH: "true",
-    OPENCODE_DISABLE_DEFAULT_PLUGINS: "true",
     OPENCODE_DISABLE_TERMINAL_TITLE: "true",
     OPENAI_API_KEY: providerSettings.apiKey,
     OPENAI_BASE_URL: providerSettings.baseURL,
