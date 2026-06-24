@@ -162,7 +162,8 @@ export function runOpencode(workspaceDir, view, files, onEvent) {
         "run",
         "--model",
         currentModelSpecifier(providerSettings),
-        "--pure",
+        "--dir",
+        workspaceDir,
         prompt,
       ],
       {
@@ -282,7 +283,8 @@ export function runOpencodeEnhance(workspaceDir, view, instructions, onEvent) {
         "run",
         "--model",
         currentModelSpecifier(providerSettings),
-        "--pure",
+        "--dir",
+        workspaceDir,
         prompt,
       ],
       {

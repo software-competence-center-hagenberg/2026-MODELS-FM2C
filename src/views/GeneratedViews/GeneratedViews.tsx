@@ -66,6 +66,18 @@ const PROGRESS_LABELS: Record<GeneratedStatus, string> = {
 };
 const ACCEPTED_FILES =
   ".ini,.txt,.md,.json,.yaml,.yml,.csv,.png,.jpg,.jpeg,.svg";
+const ANSI_ESCAPE = String.fromCharCode(27);
+
+function normaliseActivityMessage(message: string) {
+  const clean = message
+    .replaceAll(ANSI_ESCAPE, "")
+    .replace(/\[[0-9;]*m/g, "")
+    .trim();
+  if (!clean) return null;
+  if (clean.startsWith(">")) return null;
+  if (clean === "AI generation in progress — running opencode agent.") return null;
+  return clean;
+}
 export function GeneratedViews() {
   const [prompt, setPrompt] = useState(SAMPLE_PROMPT);
   const [files, setFiles] = useState<File[]>([]);
@@ -171,10 +183,16 @@ export function GeneratedViews() {
     if (!raw) return;
     try {
       const payload = JSON.parse(raw) as JobEvent;
-      if (payload.message)
-        setEvents((current) =>
-          [payload.message ?? "", ...current].slice(0, 80),
-        );
+      if (payload.message) {
+        const message = normaliseActivityMessage(payload.message);
+        if (message) {
+          setEvents((current) =>
+            current[0] === message
+              ? current
+              : [message, ...current].slice(0, 80),
+          );
+        }
+      }
       if (payload.view) {
         setActiveJob(payload.view);
         setViews((current) => [
