@@ -37,7 +37,13 @@ async function main() {
         const id = parts[1];
         const instructionsB64 = parts.slice(2).join(':');
         const instructions = Buffer.from(instructionsB64, 'base64url').toString('utf8');
-        await worker.enhanceJob(id, instructions);
+        try {
+          await worker.enhanceJob(id, instructions);
+        } catch (err) {
+          console.error(`[worker] enhance ${id} failed:`, err.message);
+          store.updateStatus(id, 'error', err.message);
+          events.publish(id, { status: 'error', message: err.message });
+        }
       } else if (item.startsWith('preview:')) {
         const id = item.split(':')[1];
         await handlePreview(id);

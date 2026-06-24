@@ -299,6 +299,7 @@ async function servePreview(id, assetPath, response) {
     {
       "imports": {
         "react": "https://esm.sh/react@19.2.6?deps=react-dom@19.2.6",
+        "react/jsx-runtime": "https://esm.sh/react@19.2.6/jsx-runtime?external:react",
         "react-dom": "https://esm.sh/react-dom@19.2.6?external:react",
         "react-dom/client": "https://esm.sh/react-dom@19.2.6/client?external:react"
       }

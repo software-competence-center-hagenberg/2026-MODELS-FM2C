@@ -1,307 +1,270 @@
-# Docker SPL Configurator + Generated View Workflow
+# fm2c — Software Product Line Configurator with AI-Generated Views
 
-A React/Vite Software Product Line (SPL) configurator for Docker Compose stacks, with a chat-driven pipeline for generating standalone configurator views.
+**fm2c** is a React/Vite application that lets users describe a Software Product Line (think SaaS tiers, Docker Compose stacks, car model lineups) and get back a working, interactive configurator dashboard — generated on the fly by an AI coding agent.
 
-The key thing: the trusted main app is built once. User-generated configurator pages are AI-generated, validated, built, and served through a separate pipeline under `/gen/:id`.
-
----
-
-## Project Structure
-
-```
-spl-visualizer/
-├── src/                          # Trusted frontend (built once, never regenerated)
-│   ├── App.tsx                   # Root — currently just wraps GeneratedViews
-│   ├── main.tsx                  # Vite entry point
-│   ├── index.css                 # Global styles
-│   └── views/
-│       └── GeneratedViews/
-│           └── GeneratedViews.tsx  # Main UI — prompt input, job list, SSE progress, preview
-│
-├── server/                       # Node.js API server (no Express, just node:http)
-│   ├── index.js                  # HTTP router — handles /api/*, /gen/:id, /gen-preview/:id, static
-│   ├── worker.js                 # Queue worker — orchestrates preparing → generating → validating → building → publishing
-│   ├── opencode.js               # Spawns opencode run inside isolated workspaces
-│   ├── validation.js             # Checks generated View.tsx (exports, blocked APIs, TS parse)
-│   ├── store.js                  # SQLite persistence for jobs and uploaded files
-│   ├── events.js                 # SSE event helpers for real-time progress
-│   └── config.js                 # Paths, env vars, model config (env vars)
-│
-├── data/                         # Runtime only (gitignored)
-│   └── generated-views.sqlite    # Job metadata + uploaded files
-│
-├── generated-workspaces/         # Runtime only (gitignored)
-│   └── :id/
-│       ├── index.html            # Trusted template (fixed)
-│       ├── opencode.json         # AI provider + permission config
-│       ├── AGENTS.md             # Copied from project root (agent instructions)
-│       └── src/
-│           ├── main.tsx          # Trusted template (imports View)
-│           └── View.tsx          # AI-generated file — the only thing opencode edits
-│
-├── generated-dist/               # Runtime only (gitignored)
-│   ├── .tmp/:id/                 # Staging build output
-│   └── :id/                      # Published static artefact (served at /gen/:id)
-│
-├── vite.config.ts                # Trusted main app build pipeline
-├── vite.generated.config.ts      # Per-view build pipeline (roots at generated-workspaces/:id/)
-├── package.json
-└── AGENTS.md                     # Agent instructions (copied into each workspace)
-```
+It's a **two-process system**: a trusted host app that handles UI and orchestration, and an untrusted generation pipeline that spawns [opencode](https://opencode.ai) in a locked-down workspace to produce self-contained React views. The generation agent is guided by [AGENTS.md](./AGENTS.md) — a specification that defines the SPL visualizer contract, including module selection views, UVL modelling, strategic conflict detection, and MCP server integration.
 
 ---
 
-## Two Pipelines, One Server
+## Architecture
 
-### 1. Trusted Frontend
+```
+┌─────────────────┐     Valkey Queue      ┌──────────────────┐
+│   API Server    │◄──────────────────────►│     Worker       │
+│  (server/api.js)│     (pub/sub +        │ (worker-standalone│
+│                 │      BLPOP/RPUSH)      │    .js)          │
+│  - HTTP router  │                       │                  │
+│  - SSE streams  │                       │  - dequeues jobs  │
+│  - static files  │                       │  - runs pipeline  │
+│  - SQLite store  │                       │  - spawns opencode│
+└────────┬────────┘                       └────────┬─────────┘
+         │                                          │
+         ▼                                          ▼
+┌─────────────────┐                       ┌──────────────────┐
+│  Trusted dist/   │                       │  Generated views │
+│  (built once)    │                       │  /gen/:id        │
+│  src/App.tsx     │                       │  (Vite-built,     │
+│  → frontend UI   │                       │   static pages)   │
+└─────────────────┘                       └──────────────────┘
+```
 
-Built once with `npm run build`. Served statically from `dist/`. Never touches generated code. Currently contains a single view (`GeneratedViews`) that lets users:
+| Process | Role | Container |
+|---------|------|-----------|
+| **API Server** (`server/api.js`) | Serves the trusted frontend (built once from `src/`), handles REST API, streams SSE events, reads/writes job metadata in SQLite | `Dockerfile.api` |
+| **Worker** (`server/worker-standalone.js`) | Polls Valkey for jobs, runs the 6-stage pipeline (preparing→generating→validating→building→publishing→ready), spawns `opencode` in isolated workspaces, runs Vite builds | `Dockerfile.worker` |
 
-- Type a prompt (and optionally upload files)
-- Trigger AI generation via `POST /api/generation-jobs`
-- Watch real-time progress via SSE (`GET /api/generation-jobs/:id/events`)
-- Preview in-progress builds via `POST /api/generation-jobs/:id/preview`
-- Enhance existing views via `POST /api/generation-jobs/:id/enhance`
-- Browse and delete past jobs
+Two processes because the generation pipeline is CPU/IO-heavy (LLM calls, Vite builds) and runs untrusted AI-generated code. Keeping it separate means the API stays responsive, the worker can be locked down independently (iptables egress, restricted filesystem), and they scale independently via the shared Valkey queue.
 
-### 2. Generated View Pipeline
+---
 
-Each job gets its own isolated workspace under `generated-workspaces/:id/`. The worker processes jobs sequentially through these stages:
+## The Trusted / Generated Split
+
+**Trusted side** (`src/`): built once by `npm run build`, served from `dist/`. Contains the UI for submitting prompts, watching job progress, and browsing generated views. Never dynamically imports or evaluates generated code. Written by developers, committed to git.
+
+**Generated side** (`generated-workspaces/:id/`): created at runtime per generation job. Contains `src/View.tsx` — a self-contained React component produced by an AI agent. Validated, built into static HTML/JS, served at `/gen/:id/` with a restrictive CSP. Never executed on the server — no SSR, no dynamic evaluation. Treated as untrusted input at every stage.
+
+---
+
+## Generation Pipeline
+
+Each job progresses through a deterministic state machine:
 
 ```
 queued → preparing → generating → validating → building → publishing → ready
-                                                       ↘ error
+                                                                   ↘ error
+                                (any stage)                        → deleted
 ```
 
-| Stage | What happens |
-|---|---|
-| **preparing** | Creates workspace, writes trusted `index.html` + `src/main.tsx`, copies `AGENTS.md` |
-| **generating** | Runs `opencode run --pure` to produce `src/View.tsx`. Falls back to deterministic regex template if opencode leaves placeholder behind |
-| **validating** | Checks for `meta` export, default export, blocked APIs (`eval`, `fetch`, `fs`, etc.), TypeScript parse |
-| **building** | Runs `vite build` via `vite.generated.config.ts` → `generated-dist/.tmp/:id/` |
-| **publishing** | Atomic rename from `.tmp/:id/` → `:id/` |
+### 1. Queued
+Pushed onto a Valkey list (`RPUSH spl_jobs_queue`). The worker picks it up via `BLPOP` (blocking pop, 5-second timeout). The standalone worker loop distinguishes regular jobs from enhancements and previews by prefix (`enhance:` and `preview:`).
+
+### 2. Preparing
+Creates an isolated workspace at `generated-workspaces/:id/`:
+- Writes a trusted `index.html` template
+- Writes a trusted `src/main.tsx` (imports and mounts the generated View)
+- **Copies `AGENTS.md`** from the project root into the workspace — this is the instruction set the spawned agent uses
+- Generates an `opencode.json` with the AI provider config and **restrictive permissions**
+
+### 3. Generating
+
+**Default path — opencode** (`server/opencode.js`):
+Spawns `opencode run --pure <prompt>` as a child process with a 20-minute timeout. The prompt includes:
+- The user's request (sanitised, wrapped in opaque nonced tags to prevent prompt injection)
+- Uploaded file contents (capped at per-file and total char budgets)
+- Requirements: export `meta`, export default component, self-contained React, no blocked APIs
+
+Output from opencode is streamed to the browser via SSE line by line.
+
+**Fallback path — deterministic template**:
+If opencode is unavailable (auto-detected) or fails, a deterministic template generator in `generateViewSource()` produces a basic configurator. It parses the prompt with regex to extract option labels, groups them into categories, and generates a dark-themed dashboard. Controlled by `OPENCODE_FALLBACK_TEMPLATE=true`.
+
+### 4. Validating (`server/validation.js`)
+A multi-layer gate:
+
+1. **Workspace walk** — rejects symlinks, unexpected files, extra directories
+2. **Trusted file integrity** — `index.html` and `src/main.tsx` compared **byte-for-byte** against known-good templates
+3. **View.tsx checks** — size ≤ 200 KB, must export `meta` + default component, **blocked API scan** (regex for `node:fs`, `child_process`, `process.env`, `eval`, `fetch`, `XMLHttpRequest`, `WebSocket`, `localStorage`, `dangerouslySetInnerHTML`, etc.)
+4. **TypeScript strict parse** — transpiles with `strict: true`, rejects any diagnostic error
+
+### 5. Building
+Runs `vite build` via `vite.generated.config.ts` rooted at the workspace. Outputs to `generated-dist/.tmp/:id/`. 60-second timeout.
+
+### 6. Publishing
+Atomic rename from `.tmp/:id/` → `:id/`. Path escape assertions prevent directory traversal.
+
+### 7. Ready
+SQLite status updated, SSE event published, view live at `/gen/:id/`.
+
+### Enhancement Flow
+Existing ready views can be enhanced via `POST /api/generation-jobs/:id/enhance`. The worker reads the current `View.tsx`, wraps it in a new prompt with the enhancement instructions, re-runs opencode, then re-validates, re-builds, and re-publishes.
 
 ---
 
-## Security Isolation
+## How Opencode Integrates AGENTS.md and MCP
 
-The generated code is untrusted. Safeguards include:
+When a generation job runs:
 
-- Generated code lives **outside** `src/` — never dynamically imported into the main app
-- Opencode runs in an isolated workspace with no network access (`webfetch: "deny"`)
-- Generated `View.tsx` is validated before build (blocked APIs, size limits, TypeScript parse)
-- Generated pages are **static** — no server-side rendering or dynamic evaluation
-- Served with a restrictive CSP: `default-src 'none'; script-src 'self' 'unsafe-inline'; ...`
-- Iframe previews use `sandbox="allow-scripts"`
-- Path escape checks prevent directory traversal in static serving
+1. **`AGENTS.md` is copied** into the workspace by the `preparing` stage (line 145 of `server/worker.js`: `fs.copyFileSync(AGENTS_MD_PATH, ...)`)
+2. **`opencode.json`** is written alongside it by `writeOpencodeConfig()` in `server/opencode.js` — this configures the AI provider and a strict permission sandbox:
 
-**For production:** split the API server and generation worker into separate containers with a restricted filesystem and no production secrets. That's the sensible next hardening step — otherwise it gets a bit dodgy.
+```json
+{
+  "model": "llm2go/Qwen3.6-27B-FP8-Reasoning-OFF",
+  "provider": {
+    "llm2go": {
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "https://vllm-api.scch.at/",
+        "apiKey": "{env:VLLM_API_KEY}"
+      },
+      "models": { "Qwen3.6-27B-FP8-Reasoning-OFF": { "id": "Qwen3.6-27B-FP8 - Reasoning OFF" } }
+    }
+  },
+  "permission": {
+    "read":     { "*": "allow" },
+    "edit":     { "src/View.tsx": "allow", "*": "deny" },
+    "bash":     { "*": "deny" },
+    "webfetch": "deny",
+    "websearch": "deny",
+    "task":     "deny",
+    "external_directory": "deny",
+    "question": "deny"
+  }
+}
+```
+
+3. The agent reads `AGENTS.md` as its primary instruction set
+
+**What AGENTS.md tells the spawned agent:**
+
+- **The SPL visualizer contract**: every generated view must let users select/deselect modules, maintain shared configuration state, and produce a downloadable config file (Helm chart, docker-compose, IaC, etc.)
+- **Three distinct views**: the agent must produce 3 structurally different configurator screens using different UI libraries and CSS approaches — not the same layout recoloured
+- **Design rules**: use strategic labels ("Mid-size sedan for urban professionals") over technical keys, never expose raw product codes, always flag strategic conflicts with inline warnings
+- **UVL modelling**: start with a UVL diagram to model modules (required, optional, alternative) before generating views
+- **MCP server access**: the agent has access to an MCP server for generating the React/Vite output application
+- **Tech stack**: React 19+, TypeScript, Vite, validation with zod, varied charting libraries (Recharts, D3, custom SVG)
+
+**What the permission sandbox prevents:**
+The agent can **read** any file in the workspace, **edit** only `src/View.tsx`. Cannot run bash, fetch URLs, access directories outside the workspace. At the container level, `server/worker-entrypoint.sh` installs **iptables egress rules** — only loopback, DNS, Valkey, and the LLM provider are reachable. Everything else is REJECT'd. This is defence-in-depth: even if prompt injection bypasses the sanitisation fence, the agent can't exfiltrate data.
+
+---
+
+## Security Model (Layered Defence)
+
+| Layer | Mechanism | Enforced by |
+|-------|-----------|-------------|
+| **Filesystem isolation** | Generated views live outside `src/`, never imported by the main app | Project structure |
+| **Workspace integrity** | Rejects unexpected files, symlinks, extra directories | `validation.js` |
+| **Trusted template integrity** | Byte-for-byte comparison of `index.html` / `main.tsx` against known-good | `validation.js` |
+| **Code validation** | Blocked API regex scan, strict TS parse, size limit | `validation.js` |
+| **Permission sandbox** | Opencode can only edit `src/View.tsx`, no bash/network | `opencode.json` |
+| **Prompt injection defence** | User input wrapped in opaque nonced tags, backticks defanged | `sanitise.js` |
+| **Network egress lockdown** | iptables: only Valkey + LLM provider reachable; all else REJECT'd | `worker-entrypoint.sh` |
+| **Static serving** | Restrictive CSP (`default-src 'none'`), `isInside()` path traversal check, no SSR | `server/index.js` / `api.js` |
+| **Secrets handling** | API keys passed via env, never written to disk, redacted from error responses | `opencode.js` / `api.js` |
+| **File upload limits** | 8 file limit, 512 KB per file, 2 MB total, char-budgeted in prompts | `worker.js` |
 
 ---
 
 ## API Routes
 
-```http
-POST   /api/generation-jobs             # Create a new generation job
-GET    /api/generation-jobs             # List recent jobs
-GET    /api/generation-jobs/:id         # Get job status
-GET    /api/generation-jobs/:id/events  # SSE stream for real-time progress
-POST   /api/generation-jobs/:id/enhance # Re-run opencode with new instructions
-POST   /api/generation-jobs/:id/preview # Trigger preview build (during generating/validating)
-GET    /api/views                       # List all non-deleted views
-DELETE /api/views/:id                   # Delete a view (workspace + dist)
-GET    /gen/:id                         # Serve generated static page
-GET    /gen/:id/assets/:asset           # Serve generated static assets
-GET    /gen-preview/:id                 # Serve preview build (during generation)
+```
+POST   /api/generation-jobs                # Create job (body: { prompt, files? })
+GET    /api/generation-jobs/:id             # Get job status
+GET    /api/generation-jobs/:id/events      # SSE stream for real-time progress
+POST   /api/generation-jobs/:id/enhance     # Re-run opencode with new instructions
+POST   /api/generation-jobs/:id/preview     # Trigger preview build during generation
+GET    /api/views                           # List all non-deleted views
+DELETE /api/views/:id                       # Delete a view (workspace + dist)
+GET    /gen/:id                             # Serve generated static page
+GET    /gen/:id/assets/*                    # Serve generated assets
+GET    /gen-preview/:id                     # Serve live-transpiled preview during generation
+GET    /docker                              # Static example app (Docker Compose)
+GET    /firefox                             # Static example app (Firefox config)
 ```
 
 ---
 
-## Commands
+## Docker Deployment
 
-```bash
-npm install
-npm run dev              # Frontend dev server (proxies /api and /gen to :8787)
-npm run server           # API + generated static file server
-npm run build            # Typecheck + build trusted main app
-npm run build:generated  # Build one generated workspace (requires GENERATED_VIEW_ID)
-npm run lint
+### Production: Two Containers + Valkey
+
+```
+┌─────────────────┐     Valkey 6379     ┌──────────────────────┐
+│  API Server     │◄───────────────────►│  Worker              │
+│  port 8787      │   pub/sub + queue   │  CAP_NET_ADMIN       │
+│  stateless      │                     │  iptables egress     │
+│  no opencode    │                     │  lock + opencode     │
+└────────┬────────┘                     └─────────┬────────────┘
+         │                                         │
+         ▼                                         ▼
+┌─────────────────┐                     ┌──────────────────────┐
+│  SQLite          │                     │  generated-          │
+│  (data volume)   │                     │  workspaces/         │
+│                  │                     │  generated-dist/     │
+└─────────────────┘                     └──────────────────────┘
 ```
 
-**Local development** (two terminals):
+#### API Container (`Dockerfile.api`)
+- Lightweight: serves built frontend + API routes
+- No opencode installed
+- Removes `npm`/`npx` from final image to reduce CVE surface
+- Debian trixie base, `node` user, read-only `/app` except data volumes
+- Healthcheck: hits `/api/health`
+
+#### Worker Container (`Dockerfile.worker`)
+- Heavier: `opencode-ai` installed globally (pin version with build arg)
+- `CAP_NET_ADMIN` for iptables, `no-new-privileges:true`
+- Removes `npm`/`npx` from final image
+- Entrypoint script (`worker-entrypoint.sh`) sets up iptables, then `exec node server/worker-standalone.js`
+- App source root-owned read-only; only data dirs writable by `node` user
+
+### Local Development
 
 ```bash
-# Terminal 1
-cd spl-visualizer && npm run server
+# Two terminals:
+npm run server            # Terminal 1 — API server at :8787
+npm run dev               # Terminal 2 — Vite dev server with proxy
 
-# Terminal 2
-cd spl-visualizer && npm run dev
-```
-
-**Production-ish** (single server):
-
-```bash
-cd spl-visualizer && npm run build && npm run server
-```
-
----
-
-## Docker
-
-The app can run as a single container: it serves the built trusted frontend, exposes the Node API, and keeps generated views in persistent volumes. Pushes to `main` publish one image from the root `Dockerfile` to `containers.github.scch.at/humace/fm2c:main`.
-
-### Direct deploy (`docker pull` + `docker run`)
-
-```bash
-docker pull containers.github.scch.at/humace/fm2c:main
-
-docker run -d \
-  -p 84:8787 \
-  -e VLLM_API_KEY=... \
-  -v fm2c-data:/app/data \
-  -v fm2c-workspaces:/app/generated-workspaces \
-  -v fm2c-dist:/app/generated-dist \
-  --restart unless-stopped \
-  --name fm2c \
-  containers.github.scch.at/humace/fm2c:main
-```
-
-The image defaults to the SCCH vLLM endpoint and model:
-```bash
-VLLM_BASE_URL=https://vllm-api.scch.at/
-VLLM_MODEL='Qwen3.6-27B-FP8 - Reasoning OFF'
-```
-
-Open: <http://localhost:84/docker/>
-
-### Local compose alternative
-
-```bash
-cd spl-visualizer
+# Or with Docker:
 cp .env.example .env
 docker compose up --build
-```
 
-Useful commands:
-
-```bash
 docker compose logs -f
 docker compose down
-docker compose down -v   # also removes generated views and SQLite metadata
-```
-
-Notes:
-
-- The container listens on `8787` internally; publish any host port you like (for example `84:8787`).
-- `Dockerfile` installs project dev dependencies intentionally, because generated configurators are Vite-built at runtime.
-- `opencode-ai` is installed globally in the image. Pin it with `docker build --build-arg OPENCODE_VERSION=1.17.7 -t spl-visualizer .` if `latest` gets spicy.
-- Runtime state is stored in the named volumes mounted at `/app/data`, `/app/generated-workspaces`, and `/app/generated-dist`.
-
-
----
-
-## AI Configuration
-
-The worker runs `opencode run` once per generation job. Model/provider settings can come from either direct container env vars, `.env`, or `~/.pi/agent/models.json` (using `PI_MODEL_PROVIDER`, default `llm2go`). Explicit env vars still win if both are present.
-
-Recommended for direct container deploys:
-```bash
-VLLM_API_KEY=your-api-key
-
-# defaults, override only if needed
-VLLM_BASE_URL=https://vllm-api.scch.at/
-VLLM_MODEL='Qwen3.6-27B-FP8 - Reasoning OFF'
-PI_MODEL_PROVIDER=llm2go
-```
-
-OpenAI-compatible overrides are still supported:
-```bash
-OPENAI_API_KEY=your-api-key
-OPENAI_BASE_URL=https://api.openai.com/v1
-OPENAI_MODEL=gpt-4.1-mini
-```
-
-The API key is **never** written into `opencode.json` — it's referenced as `{env:VLLM_API_KEY}` and passed only through the child process environment after the OpenAI/VLLM aliases are normalised.
-
-### Useful environment variables
-
-```bash
-# Recommended direct-deploy config
-VLLM_API_KEY=...
-VLLM_BASE_URL=https://vllm-api.scch.at/
-VLLM_MODEL='Qwen3.6-27B-FP8 - Reasoning OFF'
-
-# OpenAI override
-OPENAI_API_KEY=...
-OPENAI_MODEL=gpt-4.1-mini
-OPENAI_BASE_URL=https://api.openai.com/v1
-
-# opencode
-OPENCODE_ENABLED=true            # Force enable (default: auto-detect)
-OPENCODE_TIMEOUT_MS=1200000       # Max runtime per generation (default: 20 min)
-OPENCODE_FALLBACK_TEMPLATE=true  # Use deterministic template instead of opencode
-```
-
-Default opencode command:
-
-```bash
-npx -y opencode-ai@latest run --model <provider>/<safe-model-alias> --pure <prompt>
+docker compose down -v   # also removes generated views, SQLite, and Valkey data
 ```
 
 ---
 
-## Generated Workspace Contract
+## AI Provider Resolution
 
-For each job, the system creates:
+Priority in `server/config.js` via `resolveOpencodeProviderSettings()`:
 
-```
-generated-workspaces/:id/
-  index.html       # Trusted template
-  opencode.json    # Generated provider + permission config
-  AGENTS.md        # Agent instructions
-  src/
-    main.tsx       # Trusted template
-    View.tsx       # Only file opencode should edit
-```
+1. `VLLM_BASE_URL` / `VLLM_API_KEY` / `VLLM_MODEL` set → use VLLM config (default: `https://vllm-api.scch.at/`, `Qwen3.6-27B-FP8 - Reasoning OFF`)
+2. Only `OPENAI_*` vars set → use OpenAI-compatible config (default: `https://api.openai.com/v1`, `gpt-4.1-mini`)
+3. Neither → auto-detect based on presence of any API key
 
-`src/View.tsx` must:
-
-- Export `meta` (`export const meta = { title: string, description: string }`)
-- Export a default React component (`export default function GeneratedView()`)
-- Be self-contained — React hooks only, no external dependencies
-- Avoid backend/API calls: no `process.env`, `eval`, `fetch`, `WebSocket`, `localStorage`, etc.
+The API key flows through `OPENAI_API_KEY` and `VLLM_API_KEY` env vars (both supported for backward compatibility), normalised to `VLLM_API_KEY` in the child process env. **Never written to disk** — referenced as `{env:VLLM_API_KEY}` in `opencode.json` and injected at spawn time. Error messages are scanned and redacted before reaching the browser.
 
 ---
 
-## Troubleshooting
+## Env Vars
 
-### `opencode is not available`
-
-```bash
-npx -y opencode-ai@latest --version
-```
-
-Or set:
-
-```bash
-OPENCODE_BIN=opencode
-OPENCODE_ARGS=''
-```
-
-if it's installed globally.
-
-### Wrong model or endpoint
-
-```bash
-node -e "import('./server/config.js').then(c => console.log(c.resolveOpencodeProviderSettings()))"
-```
-
-That prints the final merged provider/base URL/model after OpenAI aliases, legacy `VLLM_*` envs, and Pi model config fallback have all been resolved.
-
-### Need deterministic fallback for testing
-
-```bash
-OPENCODE_ENABLED=0 OPENCODE_FALLBACK_TEMPLATE=true npm run server
-```
-
-This bypasses opencode and uses the built-in deterministic template generator.
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VLLM_API_KEY` | — | LLM provider API key |
+| `VLLM_BASE_URL` | `https://vllm-api.scch.at/` | LLM provider endpoint |
+| `VLLM_MODEL` | `Qwen3.6-27B-FP8 - Reasoning OFF` | Model ID |
+| `OPENAI_API_KEY` | — | OpenAI-compatible API key |
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | OpenAI-compatible endpoint |
+| `OPENAI_MODEL` | `gpt-4.1-mini` | OpenAI model ID |
+| `VALKEY_URL` | `redis://valkey:6379` | Valkey connection string |
+| `OPENCODE_ENABLED` | auto-detect | Force enable/disable opencode |
+| `OPENCODE_TIMEOUT_MS` | 1200000 (20 min) | Max runtime per generation |
+| `OPENCODE_FALLBACK_TEMPLATE` | false | Use deterministic template |
+| `OPENCODE_VERSION` | latest | opencode-ai npm version for Docker build |
+| `GENERATED_VIEW_TTL_HOURS` | 168 (7 days) | View retention |
+| `MAX_FILE_PROMPT_CHARS` | 1500 | Per-file char budget in LLM prompt |
+| `MAX_FILE_CONTEXT_CHARS` | 6000 | Total file context budget |
+| `PI_MODEL_PROVIDER` | llm2go | Fallback model provider name |
