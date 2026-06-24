@@ -45,14 +45,12 @@ On first launch pi recreates the bits we deliberately left out:
 
 So after copying, just run `pi login` (or whatever auth your provider needs)
 and start `pi`. The `packages` listed in `settings.json`
-(`pi-tmux`, `pi-notify`, `pi-guardrails`) get cloned/installed automatically.
+(`pi-tmux`, `pi-notify`, `pi-guardrails`, `pi-mcp-adapter`) get cloned/installed automatically.
 
-## 4. One manual bit: pi-mcp-adapter
+## 4. pi-mcp-adapter
 
-The original machine had `extensions/pi-mcp-adapter` as a symlink to a
-globally-installed `pi-mcp-adapter`, and `settings.json`'s `packages` entry
-points at a local dev path (`../../dev/pi-mcp-adapter-v2`). Both are specific
-to that machine, so neither is committed.
-
-If you want MCP support: install `pi-mcp-adapter` globally and pi will wire it
-up, or just remove that `packages` entry — everything else works without it.
+`pi-mcp-adapter` is referenced as `npm:pi-mcp-adapter@2.5.4` in `settings.json`
+`packages` — pi installs it from npm on first run, same as the other packages.
+No manual step needed. The original machine used a local dev path and a symlink
+into `/usr/lib`; both are replaced by the pinned npm reference so the setup is
+fully reproducible off this machine.
