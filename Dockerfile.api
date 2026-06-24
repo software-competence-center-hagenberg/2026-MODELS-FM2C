@@ -1,10 +1,23 @@
 # syntax=docker/dockerfile:1
 
 # API container — serves built static frontend + HTTP API
-# Lightweight: no opencode needed, but needs full deps for vite build
-FROM node:22-bookworm-slim
+# Lightweight: no opencode needed, but needs full deps for vite build.
+
+# Debian 13 (trixie) — bookworm (12) is approaching EOL and the base-image CVEs
+# below are all fix_deferred there (will never be backported). Trixie is current
+# stable and will receive the upstream perl/ncurses/sqlite fixes when shipped;
+# today none of these CVEs have a fixed package on *any* current Debian release
+# (verified: trixie ncurses 6.5 is still affected). The ones with no upstream
+# fix *yet* are listed in .trivyignore with per-CVE justification. Trixie already
+# clears the old zlib1g CVE-2023-45853 (bookworm will_not_fix).
+FROM node:22-trixie-slim
 
 WORKDIR /app
+
+# Hygiene: pull any Debian security updates that DO exist for base packages.
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production \
     PORT=8787 \
@@ -21,6 +34,13 @@ COPY . .
 RUN npm run build \
     && mkdir -p /app/data /app/generated-workspaces /app/generated-dist \
     && chown -R node:node /app/data /app/generated-workspaces /app/generated-dist
+
+# Runtime only needs `node` (CMD: node server/api.js, healthcheck: node -e).
+# Remove npm/npm's bundled deps — npm ships an unpatched picomatch 4.0.3
+# (CVE-2026-33671) that is fixed in 4.0.4 *for app code*, but npm's own pinned
+# copy can't be patched in place. Deleting npm from the final image is the clean
+# fix and also shrinks the image.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 USER node
 

@@ -1,0 +1,101 @@
+{
+    "data": [
+        {
+            "id": "hugging-quants/Meta-Llama-3.1-70B-Instruct-AWQ-INT4",
+            "object": "model",
+            "created": 1677610602,
+            "owned_by": "openai"
+        },
+        {
+            "id": "cpatonn/GLM-4.5-Air-AWQ",
+            "object": "model",
+            "created": 1677610602,
+            "owned_by": "openai"
+        },
+        {
+            "id": "RedHatAI/Llama-4-Scout-17B-16E-Instruct-quantized.w4a16",
+            "object": "model",
+            "created": 1677610602,
+            "owned_by": "openai"
+        },
+        {
+            "id": "intfloat/multilingual-e5-large-instruct",
+            "object": "model",
+            "created": 1677610602,
+            "owned_by": "openai"
+        },
+        {
+            "id": "Qwen/Qwen2.5-Coder-32B-Instruct-AWQ",
+            "object": "model",
+            "created": 1677610602,
+            "owned_by": "openai"
+        },
+        {
+            "id": "cpatonn/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit",
+            "object": "model",
+            "created": 1677610602,
+            "owned_by": "openai"
+        },
+        {
+            "id": "casperhansen/llama-3.3-70b-instruct-awq",
+            "object": "model",
+            "created": 1677610602,
+            "owned_by": "openai"
+        },
+        {
+            "id": "Qwen/Qwen3-Embedding-0.6B",
+            "object": "model",
+            "created": 1677610602,
+            "owned_by": "openai"
+        },
+        {
+            "id": "Systran/faster-whisper-large-v3",
+            "object": "model",
+            "created": 1677610602,
+            "owned_by": "openai"
+        },
+        {
+            "id": "hexgrad/Kokoro-82M",
+            "object": "model",
+            "created": 1677610602,
+            "owned_by": "openai"
+        },
+        {
+            "id": "chatterbox",
+            "object": "model",
+            "created": 1677610602,
+            "owned_by": "openai"
+        },
+        {
+            "id": "mistralai/Voxtral-Mini-3B-2507",
+            "object": "model",
+            "created": 1677610602,
+            "owned_by": "openai"
+        },
+        {
+            "id": "cyankiwi/GLM-4.7-Flash-AWQ-4bit",
+            "object": "model",
+            "created": 1677610602,
+            "owned_by": "openai"
+        },
+        {
+            "id": "cyankiwi/Qwen3-Coder-Next-AWQ-4bit",
+            "object": "model",
+            "created": 1677610602,
+            "owned_by": "openai"
+        },
+        {
+            "id": "RedHatAI/gemma-4-31B-it-FP8-Dynamic",
+            "object": "model",
+            "created": 1677610602,
+            "owned_by": "openai"
+        },
+        {
+            "id": "Qwen/Qwen3.6-27B-FP8",
+            "object": "model",
+            "created": 1677610602,
+            "owned_by": "openai"
+        }
+    ],
+    "object": "list"
+}
