@@ -238,7 +238,11 @@ export class GenerationWorker {
   async enhanceJob(id, instructions) {
     const view = this.store.getView(id);
     if (!view) throw new Error('Generated view not found.');
-    if (view.status !== 'ready') throw new Error(`Cannot enhance view with status '${view.status}'. It must be 'ready'.`);
+    // ponytail: accept 'enhancing' too — the queue-based API (server/api.js) flips
+    // the status to 'enhancing' before enqueuing the job, so by the time the worker
+    // picks it up the status is no longer 'ready'. The in-process flow (index.js)
+    // still passes 'ready'. Both are valid pre-enhancement states.
+    if (view.status !== 'ready' && view.status !== 'enhancing') throw new Error(`Cannot enhance view with status '${view.status}'. It must be 'ready' or 'enhancing'.`);
     if (!instructions || !String(instructions).trim()) throw new Error('Enhancement instructions are required.');
 
     this.setStatus(id, 'enhancing', `Enhancing view: ${String(instructions).slice(0, 100)}`);
