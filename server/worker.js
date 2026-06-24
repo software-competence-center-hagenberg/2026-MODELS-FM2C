@@ -282,8 +282,9 @@ export async function runPreviewBuild(id) {
 
 async function runViteBuild(id, preview) {
   const viteBin = path.join(APP_ROOT, 'node_modules', 'vite', 'bin', 'vite.js');
+  const configPath = prepareWritableViteConfig(id, preview);
   await new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [viteBin, 'build', '--config', path.join(APP_ROOT, 'vite.generated.config.ts')], {
+    const child = spawn(process.execPath, [viteBin, 'build', '--config', configPath], {
       cwd: APP_ROOT,
       env: {
         NODE_ENV: 'production',
@@ -314,6 +315,15 @@ async function runViteBuild(id, preview) {
       else reject(new Error(`Generated view build failed. ${output.slice(-2000)}`));
     });
   });
+}
+
+function prepareWritableViteConfig(id, preview) {
+  const configRoot = path.join(DIST_DIR, '.tmp', 'configs');
+  const configPath = path.resolve(configRoot, `${id}${preview ? '.preview' : ''}.vite.generated.config.ts`);
+  assertInside(configRoot, configPath);
+  fs.mkdirSync(configRoot, { recursive: true });
+  fs.copyFileSync(path.join(APP_ROOT, 'vite.generated.config.ts'), configPath);
+  return configPath;
 }
 function deriveTitle(prompt) {
   const firstLine = prompt.split(/\r?\n/).map((line) => line.trim()).find(Boolean) ?? 'Generated Configurator';
