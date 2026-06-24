@@ -63,9 +63,16 @@ export function buildOpencodeConfig() {
       read: {
         "*": "allow",
       },
+      // ponytail: no catch-all "*": "deny" on edit — in opencode 1.17.x that
+      // removes the edit tool from the agent's toolset entirely (model sees
+      // "unavailable tool 'edit'") so it can never write View.tsx. Deny the
+      // specific protected files instead; src/View.tsx stays allow.
       edit: {
         "src/View.tsx": "allow",
-        "*": "deny",
+        "src/main.tsx": "deny",
+        "index.html": "deny",
+        "opencode.json": "deny",
+        "AGENTS.md": "deny",
       },
       glob: "allow",
       grep: "allow",
@@ -82,9 +89,10 @@ export function buildOpencodeConfig() {
       skill: "deny",
       todowrite: "deny",
     },
-    experimental: {
-      primary_tools: ["edit", "read", "grep", "glob", "list"],
-    },
+    // ponytail: dropped experimental.primary_tools — in opencode 1.17.x each
+    // entry maps to a deny permission, so listing edit/read/grep/glob/list
+    // there was silently denying the very tools we need. The permission block
+    // above already scopes edit to src/View.tsx and denies bash/task/etc.
   };
 }
 
