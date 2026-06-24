@@ -10,7 +10,9 @@ import {
   ID_PATTERN,
   MAIN_DIST_DIR,
   MAX_UPLOAD_BYTES,
+  OPENAI_API_KEY,
   PORT,
+  VLLM_API_KEY,
   WORKSPACES_DIR,
   publicUrlFor,
 } from './config.js';
@@ -37,7 +39,11 @@ const sseClients = new Map(); // id -> Set<response>
       const clients = sseClients.get(id);
       if (clients) {
         const event = status ?? 'message';
-        const data = JSON.stringify({ status, message, view: view ? toPublicView(view) : undefined }).replace(/^\s+/, '');
+        const data = JSON.stringify({
+          status,
+          message: message ? stripKeyMessage(message) : undefined,
+          view: view ? toPublicView(view) : undefined
+        }).replace(/^\s+/, '');
         for (const res of clients) {
           if (!res.destroyed) {
             res.write(`event: ${event}\n`);
@@ -128,7 +134,7 @@ const server = http.createServer(async (request, response) => {
     return sendJson(response, 405, { error: 'Method not allowed.' });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return sendJson(response, 500, { error: message });
+    return sendJson(response, 500, { error: stripKeyMessage(message) });
   }
 });
 
@@ -352,7 +358,7 @@ function toPublicView(view) {
     created_at: view.created_at,
     updated_at: view.updated_at,
     expires_at: view.expires_at,
-    error_message: view.error_message,
+    error_message: stripKeyMessage(view.error_message),
   };
 }
 
@@ -376,4 +382,17 @@ function mimeType(filePath) {
     '.webp': 'image/webp',
     '.ico': 'image/x-icon',
   }[ext] ?? 'application/octet-stream';
+}
+
+/**
+ * Strip known API key values from any string that reaches the client.
+ * Belt-and-suspenders: even if a dev later adds the key to an error path
+ * by mistake, it won't end up in the browser.
+ */
+function stripKeyMessage(value) {
+  if (typeof value !== 'string' || !value) return value;
+  let s = value;
+  if (VLLM_API_KEY) s = s.replaceAll(VLLM_API_KEY, '[KEY REDACTED]');
+  if (OPENAI_API_KEY) s = s.replaceAll(OPENAI_API_KEY, '[KEY REDACTED]');
+  return s;
 }
