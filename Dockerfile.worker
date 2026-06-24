@@ -15,12 +15,8 @@ ENV NODE_ENV=production \
 COPY package.json package-lock.json ./
 
 # Install ALL deps (including dev) because worker runs vite builds at runtime.
-# Refresh npm first: the node image's bundled npm ships an unpatched picomatch
-# 4.0.3 (CVE-2026-33671). npm 11+ doesn't bundle picomatch, so upgrading clears it.
-# Worker genuinely needs npm at runtime (opencode-ai install + vite builds), unlike API.
 ARG OPENCODE_VERSION=latest
-RUN npm install -g npm@latest \
-    && npm ci --include=dev \
+RUN npm ci --include=dev \
     && npm install -g "opencode-ai@${OPENCODE_VERSION}" \
     && npm cache clean --force
 
@@ -38,6 +34,12 @@ RUN apt-get update \
     && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends iptables ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# Runtime only needs `node` plus the installed opencode binary. Remove npm/npm's
+# bundled deps from the final image; npm currently carries vulnerable transitive
+# packages (for example undici CVE-2026-12151) and the worker entrypoint never
+# calls npm at runtime.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 # Create runtime directories; only chown the writable data dirs to node.
 # The rest of /app stays root-owned so node can READ but not WRITE server/src/etc.
