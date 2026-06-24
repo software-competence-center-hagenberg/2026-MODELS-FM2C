@@ -34,7 +34,7 @@ include:
       stage: security
       job-name: spl-visualizer-worker-trivy-scan
       scan-mode: registry
-      image: "$CI_REGISTRY_IMAGE/spl-visualizer-worker:latest"
+      image: "$CI_REGISTRY_IMAGE/spl-visualizer-worker:$CI_COMMIT_SHORT_SHA"
       severity: "HIGH,CRITICAL"
       allow-failure: false
       tags: ["default"]
@@ -44,7 +44,7 @@ include:
       stage: security
       job-name: spl-visualizer-api-trivy-scan
       scan-mode: registry
-      image: "$CI_REGISTRY_IMAGE/spl-visualizer-api:latest"
+      image: "$CI_REGISTRY_IMAGE/spl-visualizer-api:$CI_COMMIT_SHORT_SHA"
       severity: "HIGH,CRITICAL"
       allow-failure: false
       tags: ["default"]
@@ -63,7 +63,7 @@ include:
     inputs:
       stage: deploy
       job-name: harbor-copy-worker
-      source-image: "$CI_REGISTRY_IMAGE/spl-visualizer-worker:latest"
+      source-image: "$CI_REGISTRY_IMAGE/spl-visualizer-worker:$CI_COMMIT_SHORT_SHA"
       target-image: "registry.scch.at/$HARBOR_PROJECT/spl-visualizer-worker:latest"
       tags: ["default"]
 
@@ -71,6 +71,6 @@ include:
     inputs:
       stage: deploy
       job-name: harbor-copy-api
-      source-image: "$CI_REGISTRY_IMAGE/spl-visualizer-api:latest"
+      source-image: "$CI_REGISTRY_IMAGE/spl-visualizer-api:$CI_COMMIT_SHORT_SHA"
       target-image: "registry.scch.at/$HARBOR_PROJECT/spl-visualizer-api:latest"
       tags: ["default"]
