@@ -1,74 +1,55 @@
 services:
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
-    image: ${IMAGE_PREFIX:-}spl-visualizer-api:latest
-    ports:
-      - "${PORT:-8787}:8787"
-    env_file:
-      - path: .env
-        required: false
-    environment:
-      PORT: 8787
-      VALKEY_URL: redis://valkey:6379
-      GENERATED_DATA_DIR: /app/data
-      GENERATED_WORKSPACES_DIR: /app/generated-workspaces
-      GENERATED_DIST_DIR: /app/generated-dist
-      GENERATED_VIEW_TTL_HOURS: ${GENERATED_VIEW_TTL_HOURS:-168}
-    volumes:
-      - spl_visualizer_data:/app/data
-      - spl_visualizer_workspaces:/app/generated-workspaces
-      - spl_visualizer_generated_dist:/app/generated-dist
-    depends_on:
-      valkey:
-        condition: service_started
-    restart: unless-stopped
-
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.worker
-      args:
-        OPENCODE_VERSION: ${OPENCODE_VERSION:-latest}
-    image: ${IMAGE_PREFIX:-}spl-visualizer-worker:latest
-    env_file:
-      - path: .env
-        required: false
-    environment:
-      VALKEY_URL: redis://valkey:6379
-      GENERATED_DATA_DIR: /app/data
-      GENERATED_WORKSPACES_DIR: /app/generated-workspaces
-      GENERATED_DIST_DIR: /app/generated-dist
-      OPENCODE_TIMEOUT_MS: ${OPENCODE_TIMEOUT_MS:-1200000}
-      OPENCODE_ENABLED: ${OPENCODE_ENABLED:-true}
-      VLLM_BASE_URL: ${VLLM_BASE_URL:-}
-      VLLM_API_KEY: ${VLLM_API_KEY:-}
-      VLLM_MODEL: ${VLLM_MODEL:-}
-      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-}
-    cap_add:
-      - NET_ADMIN       # worker-entrypoint.sh installs iptables rules to lock egress
-    security_opt:
-      - no-new-privileges:true
-    volumes:
-      - spl_visualizer_data:/app/data
-      - spl_visualizer_workspaces:/app/generated-workspaces
-      - spl_visualizer_generated_dist:/app/generated-dist
-    depends_on:
-      valkey:
-        condition: service_started
-    restart: unless-stopped
-
   valkey:
     image: valkey/valkey:latest
-    volumes:
-      - spl_visualizer_valkey:/data
+    container_name: valkey
     restart: unless-stopped
+    networks:
+      - fm2c-net
+
+  fm2c-api:
+    image: registry.scch.at/humace/spl-visualizer-api:latest
+    container_name: fm2c-api
+    restart: unless-stopped
+    ports:
+      - "85:8787"
+    environment:
+      VALKEY_URL: redis://valkey:6379
+    volumes:
+      - fm2c-data:/app/data
+      - fm2c-workspaces:/app/generated-workspaces
+      - fm2c-dist:/app/generated-dist
+    networks:
+      - fm2c-net
+    depends_on:
+      - valkey
+
+  fm2c-worker:
+    image: registry.scch.at/humace/spl-visualizer-worker:latest
+    env_file:
+      - .env
+    container_name: fm2c-worker
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    environment:
+      VALKEY_URL: redis://valkey:6379
+      VALKEY_HOSTNAME: valkey
+      OPENAI_BASE_URL: https://api.openai.com/v1
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    volumes:
+      - fm2c-data:/app/data
+      - fm2c-workspaces:/app/generated-workspaces
+      - fm2c-dist:/app/generated-dist
+    networks:
+      - fm2c-net
+    depends_on:
+      - valkey
+
+networks:
+  fm2c-net:
+    name: fm2c-net
 
 volumes:
-  spl_visualizer_data:
-  spl_visualizer_workspaces:
-  spl_visualizer_generated_dist:
-  spl_visualizer_valkey:
+  fm2c-data:
+  fm2c-workspaces:
+  fm2c-dist:

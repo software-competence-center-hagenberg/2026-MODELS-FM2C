@@ -143,7 +143,18 @@ export function validateGeneratedView(workspaceDir, viewTitle) {
   const diagnostic = transpiled.diagnostics?.find((item) => item.category === ts.DiagnosticCategory.Error);
   if (diagnostic) {
     const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
-    throw new Error(`Generated View.tsx failed TypeScript parsing: ${message}`);
+    const loc = diagnostic.file
+      ? `line ${ts.getLineAndCharacterOfPosition(diagnostic.file, diagnostic.start).line + 1}`
+      : 'unknown location';
+    const srcLines = source.split('\n');
+    const startLine = diagnostic.file
+      ? ts.getLineAndCharacterOfPosition(diagnostic.file, diagnostic.start).line
+      : 0;
+    const context = srcLines
+      .slice(Math.max(0, startLine - 1), startLine + 2)
+      .map((l, i) => `  ${startLine + i}| ${l}`)
+      .join('\n');
+    throw new Error(`Generated View.tsx failed TypeScript parsing: ${message}\n  at ${loc}\n  context:\n${context}`);
   }
 
   return true;

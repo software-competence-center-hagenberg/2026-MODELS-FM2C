@@ -1,8 +1,8 @@
 #!/bin/sh
 # reset-generated.sh — wipe ALL generated SPL configurator sites.
 # Run from the host (the docker-compose project dir). Connects to the running
-# api container, deletes every generated workspace, dist build, preview dir
-# and marks every DB row as deleted. Done.
+# fm2c-api container, deletes every generated workspace, dist build, preview dir
+# and clears the generated-view DB rows. Done.
 #
 # Usage:
 #   ./scripts/reset-generated.sh            # delete everything
@@ -15,10 +15,10 @@ cd "$(dirname "$0")/.."   # repo root, where docker-compose.yml lives
 DRY_RUN=0
 [ "${1:-}" = "--dry-run" ] && DRY_RUN=1
 
-# ponytail: `docker compose exec api` is the only entry point we need — no
+# ponytail: `docker compose exec fm2c-api` is the only entry point we need — no
 # host-side node, no volume mounts to juggle. The api container already has
 # node + node:sqlite and the same GENERATED_*_DIR env the app uses.
-docker compose exec -T -e CLEANUP_DRY_RUN="$DRY_RUN" api node - <<'NODE'
+docker compose exec -T -e CLEANUP_DRY_RUN="$DRY_RUN" fm2c-api node - <<'NODE'
 const fs = require('node:fs');
 const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
@@ -50,20 +50,22 @@ const clearTmp = (root) => {
 
 let ws = wipeDir(wsDir), dist = wipeDir(distDir), tmp = clearTmp(distDir);
 
-// DB: mark every generated_view row deleted (keeps history, stops the API
-// from listing them). If you'd rather flatten entirely, drop the whole file.
+// DB: clear rows too. Keeping deleted rows preserves primary keys and breaks
+// reuse of prompts on older deployments.
 const dbPath = path.join(dataDir, 'generated-views.sqlite');
-let rows = 0, dropped = 0;
+let rows = 0;
 if (fs.existsSync(dbPath)) {
   const db = new DatabaseSync(dbPath);
   db.exec('PRAGMA busy_timeout=5000');
-  rows = db.prepare("SELECT COUNT(*) c FROM generated_views WHERE status!='deleted'").get().c;
-  if (!dryRun && db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='generated_views'").get()) {
-    const now = new Date().toISOString();
-    db.prepare("UPDATE generated_views SET status='deleted', updated_at=? WHERE status!='deleted'").run(now);
+  if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='generated_views'").get()) {
+    rows = db.prepare('SELECT COUNT(*) c FROM generated_views').get().c;
+    if (!dryRun) {
+      db.exec('DELETE FROM generated_view_files');
+      db.exec('DELETE FROM generated_views');
+    }
   }
   db.close();
 }
 
-console.log((dryRun ? '[dry] ' : '') + 'wiped ' + ws + ' workspace(s), ' + dist + ' dist build(s), ' + tmp + ' preview(s); ' + rows + ' view row(s) marked deleted.');
+console.log((dryRun ? '[dry] ' : '') + 'wiped ' + ws + ' workspace(s), ' + dist + ' dist build(s), ' + tmp + ' preview(s); cleared ' + rows + ' view row(s).');
 NODE
