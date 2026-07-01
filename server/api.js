@@ -119,6 +119,12 @@ const server = http.createServer(async (request, response) => {
       return serveGeneratedView(generated[1], generated[2] ?? '', response);
 
     }
+
+    // Serve generated preview build
+    const preview = url.pathname.match(/^\/gen-preview\/([a-zA-Z0-9_-]{3,64})(?:\/(.*))?$/);
+    if (preview && request.method === 'GET') {
+      return servePreview(preview[1], preview[2] ?? '', response);
+    }
     // Serve static example apps (/firefox/* and /docker/*)
     const exampleMatch = url.pathname.match(/^(\/(firefox|docker))(?:\/(.*))?$/);
     if (exampleMatch && request.method === 'GET') {
@@ -218,10 +224,10 @@ async function handleEnhance(id, request, response) {
 async function triggerPreview(id, response) {
   const view = store.getView(id);
   if (!view || view.status === 'deleted') return sendJson(response, 404, { error: 'Generated view not found.' });
-  if (view.status !== 'generating' && view.status !== 'validating') {
-    return sendJson(response, 409, { error: 'Preview is only available while the job is generating or validating.' });
+  if (!['generating', 'validating', 'building', 'error'].includes(view.status)) {
+    return sendJson(response, 409, { error: 'Preview is only available while the job is generating, validating, building, or if it encountered an error.' });
   }
-  
+
   // For preview, the worker needs to build it. Enqueue preview job.
   await enqueueJob(`preview:${id}`);
   return sendJson(response, 200, { preview_url: `/gen-preview/${id}` });
@@ -250,22 +256,29 @@ function serveGeneratedView(id, assetPath, response) {
 
   response.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; frame-ancestors 'self'");
   response.setHeader('X-Content-Type-Options', 'nosniff');
+  response.setHeader('Access-Control-Allow-Origin', '*');
   serveFile(requested, response);
 }
 
 function servePreview(id, assetPath, response) {
   const previewDir = path.resolve(DIST_DIR, '.tmp', id, 'preview');
-  if (!fs.existsSync(previewDir) || !fs.statSync(previewDir).isDirectory()) return sendNotFound(response);
+  if (!fs.existsSync(previewDir) || !fs.statSync(previewDir).isDirectory()) return sendPreviewUnavailable(response, 'Preview is not ready yet. The generator is still producing or validating the view.');
 
   const requested = assetPath
     ? path.resolve(previewDir, assetPath)
     : path.join(previewDir, 'index.html');
   if (!isInside(previewDir, requested)) return sendNotFound(response);
-  if (!fs.existsSync(requested) || !fs.statSync(requested).isFile()) return sendNotFound(response);
+  if (!fs.existsSync(requested) || !fs.statSync(requested).isFile()) return sendPreviewUnavailable(response, 'Preview asset is missing. The preview build may have failed; check the activity log.');
 
   response.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; frame-ancestors 'self'");
   response.setHeader('X-Content-Type-Options', 'nosniff');
+  response.setHeader('Access-Control-Allow-Origin', '*');
   serveFile(requested, response);
+}
+
+function sendPreviewUnavailable(response, message) {
+  response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+  response.end(`<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Preview unavailable</title></head><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#fff;color:#111;font-family:system-ui,-apple-system,Segoe UI,sans-serif"><main style="max-width:420px;padding:24px;text-align:center"><h1 style="font-size:20px;margin:0 0 8px">Preview unavailable</h1><p style="margin:0;color:#555;line-height:1.5">${escapeHtml(message)}</p></main></body></html>`);
 }
 
 // Serve static example apps
@@ -382,6 +395,15 @@ function mimeType(filePath) {
     '.webp': 'image/webp',
     '.ico': 'image/x-icon',
   }[ext] ?? 'application/octet-stream';
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>\"]/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+  })[char]);
 }
 
 /**

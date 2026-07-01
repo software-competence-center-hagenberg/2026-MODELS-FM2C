@@ -153,6 +153,7 @@ function serveGeneratedView(id, assetPath, response) {
 
   response.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; frame-ancestors 'self'");
   response.setHeader('X-Content-Type-Options', 'nosniff');
+  response.setHeader('Access-Control-Allow-Origin', '*');
   serveFile(requested, response);
 }
 
@@ -226,6 +227,7 @@ async function servePreviewModule(id, response) {
     });
     response.setHeader('Content-Type', 'text/javascript; charset=utf-8');
     response.setHeader('Cache-Control', 'no-store, no-cache');
+    response.setHeader('Access-Control-Allow-Origin', '*');
     response.writeHead(200);
     response.end(result.outputText);
   } catch (e) {
@@ -309,20 +311,30 @@ async function servePreview(id, assetPath, response) {
   <body style="margin:0">
     <div id="root"></div>
     <script type="module">
-import React from 'react';
-import { createRoot } from 'react-dom/client';
-import GeneratedView from '/gen-preview/${id}/view.mjs';
-createRoot(document.getElementById('root')).render(
-  React.createElement(React.StrictMode, null,
-    React.createElement(GeneratedView)
-  )
-);
+const rootElement = document.getElementById('root');
+const showPreviewError = (error) => {
+  const message = error && error.message ? error.message : String(error || 'Unknown error');
+  rootElement.innerHTML = '<main style="min-height:100vh;display:grid;place-items:center;background:#fff;color:#111;font-family:system-ui,-apple-system,Segoe UI,sans-serif;padding:24px"><section style="max-width:480px;text-align:center"><h1 style="font-size:20px;margin:0 0 8px">Preview unavailable</h1><p style="margin:0;color:#555;line-height:1.5">The generated view could not be rendered yet.</p><pre style="white-space:pre-wrap;text-align:left;margin-top:16px;padding:12px;background:#f6f6f6;color:#333;font-size:12px;overflow:auto">' + message.replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[char]) + '</pre></section></main>';
+};
+try {
+  const ReactModule = await import('react');
+  const { createRoot } = await import('react-dom/client');
+  const { default: GeneratedView } = await import('/gen-preview/${id}/view.mjs');
+  createRoot(rootElement).render(
+    ReactModule.default.createElement(ReactModule.default.StrictMode, null,
+      ReactModule.default.createElement(GeneratedView)
+    )
+  );
+} catch (error) {
+  showPreviewError(error);
+}
     </script>
   </body>
 </html>`;
     response.setHeader('Content-Type', 'text/html; charset=utf-8');
     response.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'self' 'unsafe-inline' https://esm.sh; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' https:; connect-src 'self'; frame-ancestors 'self'");
     response.setHeader('X-Content-Type-Options', 'nosniff');
+    response.setHeader('Access-Control-Allow-Origin', '*');
     response.writeHead(200);
     response.end(html);
     return;

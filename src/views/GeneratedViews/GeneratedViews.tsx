@@ -268,6 +268,19 @@ export function GeneratedViews() {
     setPreviewUrl(null);
     setEnhanceText("");
   }, [activeJob?.id]);
+
+  useEffect(() => {
+    if (!activeJob || previewUrl || previewLoading) return;
+    if (
+      activeJob.status === "generating" ||
+      activeJob.status === "validating" ||
+      activeJob.status === "building"
+    ) {
+      void triggerPreview(activeJob.id);
+    }
+    // triggerPreview is intentionally not a dependency; this should only react to job/status changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeJob?.id, activeJob?.status, previewLoading, previewUrl]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
@@ -883,8 +896,23 @@ export function GeneratedViews() {
                         className="gv-pill gv-pill-secondary"
                         style={pillSecondary}
                       >
-                        Select
+                        Edit
                       </button>
+                      {view.status === "ready" && (
+                        <a
+                          href={view.public_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="gv-pill gv-pill-primary"
+                          style={{
+                            ...pillPrimary,
+                            textDecoration: "none",
+                            display: "inline-flex",
+                          }}
+                        >
+                          Open
+                        </a>
+                      )}
                     </div>
                     {view.status === "ready" && activeJob?.id === view.id && (
                       <iframe

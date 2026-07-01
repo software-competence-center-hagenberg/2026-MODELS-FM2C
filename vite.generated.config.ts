@@ -29,7 +29,7 @@ export default defineConfig(() => {
 
   return {
     root: workspaceDir,
-    base: isPreview ? '/gen-preview/' : `/gen/${id}/`,
+    base: isPreview ? `/gen-preview/${id}/` : `/gen/${id}/`,
     plugins: [react()],
     build: {
       outDir,
