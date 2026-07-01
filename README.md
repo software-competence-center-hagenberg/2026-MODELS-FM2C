@@ -72,9 +72,9 @@ Spawns `opencode run --pure <prompt>` as a child process with a 20-minute timeou
 - The user's request (sanitised, wrapped in opaque nonced tags to prevent prompt injection)
 - Uploaded file contents (capped at per-file and total char budgets)
 - Requirements: export `meta`, export default component, self-contained React, no blocked APIs
-- Explicit tool instructions: use `edit` on the existing `src/View.tsx`; do not try `write`/`bash`
+- Explicit tool instructions: use `edit` on the existing `src/View.tsx`; inspect with `read`/`grep`/`glob`/`list`; do not try `bash`/`task`/`question`/`skill`/`todowrite`
 
-Output from opencode is streamed to the browser via SSE line by line. If opencode fails or leaves the placeholder behind, the job now **fails loudly** instead of emitting a deterministic fake configurator.
+Output from opencode is streamed to the browser via SSE line by line. Default plugins stay enabled so the normal file-editing tools exist; `opencode.json` permissions then narrow that down to the generated workspace. If opencode fails or leaves the placeholder behind, the job now **fails loudly** instead of emitting a deterministic fake configurator.
 ### 4. Validating (`server/validation.js`)
 A multi-layer gate:
 

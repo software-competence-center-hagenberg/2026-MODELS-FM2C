@@ -63,21 +63,36 @@ export function buildOpencodeConfig() {
       read: {
         "*": "allow",
       },
+      // ponytail: no catch-all "*": "deny" on edit — in opencode 1.17.x that
+      // removes the edit tool from the agent's toolset entirely (model sees
+      // "unavailable tool 'edit'") so it can never write View.tsx. Deny the
+      // specific protected files instead; src/View.tsx stays allow.
       edit: {
         "src/View.tsx": "allow",
-        "*": "deny",
+        "src/main.tsx": "deny",
+        "index.html": "deny",
+        "opencode.json": "deny",
+        "AGENTS.md": "deny",
       },
       glob: "allow",
       grep: "allow",
+      list: "allow",
       bash: {
         "*": "deny",
       },
+      task: "deny",
+      question: "deny",
+      external_directory: "deny",
       webfetch: "deny",
       websearch: "deny",
-      task: "deny",
-      external_directory: "deny",
-      question: "deny",
+      lsp: "deny",
+      skill: "deny",
+      todowrite: "deny",
     },
+    // ponytail: dropped experimental.primary_tools — in opencode 1.17.x each
+    // entry maps to a deny permission, so listing edit/read/grep/glob/list
+    // there was silently denying the very tools we need. The permission block
+    // above already scopes edit to src/View.tsx and denies bash/task/etc.
   };
 }
 
@@ -108,8 +123,8 @@ ${userRequest.text}${fileContext.text}
 
 Workspace/tool rules:
 - src/View.tsx already exists. Replace its full contents using the edit tool.
-- Available tools for this job are read, grep, glob, and edit.
-- Do NOT try to use write, bash, task, question, skill, or todowrite. They are unavailable or blocked here.
+- Available tools for this job are read, grep, glob, list, and edit.
+- Do NOT try to use write, bash, task, question, skill, or todowrite for this job.
 - Implement the requested product literally. Do not turn prompt phrases into fake feature toggles or selector labels unless the user explicitly asked for that UI.
 
 Requirements:
@@ -155,7 +170,8 @@ export function runOpencode(workspaceDir, view, files, onEvent) {
         "run",
         "--model",
         currentModelSpecifier(providerSettings),
-        "--pure",
+        "--dir",
+        workspaceDir,
         prompt,
       ],
       {
@@ -235,8 +251,8 @@ ${currentSource}
 
 Workspace/tool rules:
 - Keep editing the existing src/View.tsx file with the edit tool.
-- Available tools for this job are read, grep, glob, and edit.
-- Do NOT try to use write, bash, task, question, skill, or todowrite. They are unavailable or blocked here.
+- Available tools for this job are read, grep, glob, list, and edit.
+- Do NOT try to use write, bash, task, question, skill, or todowrite for this job.
 - Apply the user's requested behaviour directly; do not degrade the view into generic prompt-derived toggle labels.
 
 Requirements:
@@ -275,7 +291,8 @@ export function runOpencodeEnhance(workspaceDir, view, instructions, onEvent) {
         "run",
         "--model",
         currentModelSpecifier(providerSettings),
-        "--pure",
+        "--dir",
+        workspaceDir,
         prompt,
       ],
       {
@@ -365,7 +382,6 @@ function createOpencodeEnv(providerSettings, configPath) {
     OPENCODE_CONFIG: configPath,
     OPENCODE_DISABLE_AUTOUPDATE: "true",
     OPENCODE_DISABLE_MODELS_FETCH: "true",
-    OPENCODE_DISABLE_DEFAULT_PLUGINS: "true",
     OPENCODE_DISABLE_TERMINAL_TITLE: "true",
     OPENAI_API_KEY: providerSettings.apiKey,
     OPENAI_BASE_URL: providerSettings.baseURL,

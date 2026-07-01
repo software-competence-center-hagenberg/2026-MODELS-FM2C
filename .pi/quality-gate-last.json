@@ -1,22 +1,29 @@
 {
   "version": 1,
-  "finishedAt": 1782120340776,
+  "finishedAt": 1782314019458,
   "mode": "all",
-  "passed": true,
+  "passed": false,
   "results": [
+    {
+      "name": "test",
+      "command": "npm test",
+      "code": 1,
+      "passed": false,
+      "durationMs": 312
+    },
+    {
+      "name": "lint",
+      "command": "npm run lint",
+      "code": 1,
+      "passed": false,
+      "durationMs": 20337
+    },
     {
       "name": "build",
       "command": "npm run build",
       "code": 0,
       "passed": true,
-      "durationMs": 4562
-    },
-    {
-      "name": "lint",
-      "command": "npm run lint",
-      "code": 0,
-      "passed": true,
-      "durationMs": 7945
+      "durationMs": 9426
     }
   ]
 }

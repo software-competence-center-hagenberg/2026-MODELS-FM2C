@@ -73,7 +73,7 @@ const server = http.createServer(async (request, response) => {
 
     // Create generation job
     if (url.pathname === '/api/generation-jobs' && request.method === 'POST') {
-      return createGenerationJob(request, response);
+      return await createGenerationJob(request, response);
     }
 
     // Get job status
@@ -93,13 +93,13 @@ const server = http.createServer(async (request, response) => {
     // Enhance job
     const enhanceMatch = url.pathname.match(/^\/api\/generation-jobs\/([a-zA-Z0-9_-]{3,64})\/enhance$/);
     if (enhanceMatch && request.method === 'POST') {
-      return handleEnhance(enhanceMatch[1], request, response);
+      return await handleEnhance(enhanceMatch[1], request, response);
     }
 
     // Preview trigger
     const previewMatch = url.pathname.match(/^\/api\/generation-jobs\/([a-zA-Z0-9_-]{3,64})\/preview$/);
     if (previewMatch && request.method === 'POST') {
-      return triggerPreview(previewMatch[1], response);
+      return await triggerPreview(previewMatch[1], response);
     }
 
     // List views
@@ -148,7 +148,7 @@ async function createGenerationJob(request, response) {
   const body = await readJsonBody(request);
   const prompt = normalisePrompt(body.prompt);
   const files = normaliseFiles(body.files);
-  const existingIds = store.listViews().map((v) => v.id);
+  const existingIds = store.listIds();
   const id = createJobId(prompt, existingIds);
   const view = createInitialView({ id, prompt, files });
   store.createView(view, files);

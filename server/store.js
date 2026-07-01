@@ -9,6 +9,7 @@ export class GenerationStore {
   constructor() {
     fs.mkdirSync(DATA_DIR, { recursive: true });
     this.db = new DatabaseSync(DB_PATH);
+    this.db.exec('PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL;');
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS generated_views (
         id TEXT PRIMARY KEY,
@@ -117,6 +118,10 @@ export class GenerationStore {
 
   getFiles(id) {
     return this.db.prepare('SELECT name, type, size, content, created_at FROM generated_view_files WHERE view_id = ? ORDER BY id ASC').all(id);
+  }
+
+  listIds() {
+    return this.db.prepare('SELECT id FROM generated_views').all().map((row) => row.id);
   }
 
   listViews() {
