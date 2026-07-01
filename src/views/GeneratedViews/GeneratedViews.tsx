@@ -892,7 +892,10 @@ export function GeneratedViews() {
                     </div>
                     <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                       <button
-                        onClick={() => setActiveJob(view)}
+                        onClick={() => {
+                          setActiveJob(view);
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
                         className="gv-pill gv-pill-secondary"
                         style={pillSecondary}
                       >
@@ -914,19 +917,6 @@ export function GeneratedViews() {
                         </a>
                       )}
                     </div>
-                    {view.status === "ready" && activeJob?.id === view.id && (
-                      <iframe
-                        title={`Preview of ${view.title}`}
-                        src={view.public_url}
-                        sandbox="allow-scripts"
-                        style={{
-                          width: "100%",
-                          minHeight: 520,
-                          border: `1px solid ${BORDER}`,
-                          background: "#fff",
-                        }}
-                      />
-                    )}
                   </article>
                 ))}
                 {views.length > 0 &&
