@@ -286,6 +286,19 @@ export function GeneratedViews() {
     setPreviewUrl(null);
     setEnhanceText("");
   }, [activeJob?.id]);
+
+  useEffect(() => {
+    if (!activeJob || previewUrl || previewLoading) return;
+    if (
+      activeJob.status === "generating" ||
+      activeJob.status === "validating" ||
+      activeJob.status === "building"
+    ) {
+      void triggerPreview(activeJob.id);
+    }
+    // triggerPreview is intentionally not a dependency; this should only react to job/status changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeJob?.id, activeJob?.status, previewLoading, previewUrl]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
@@ -897,26 +910,31 @@ export function GeneratedViews() {
                     </div>
                     <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                       <button
-                        onClick={() => setActiveJob(view)}
+                        onClick={() => {
+                          setActiveJob(view);
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
                         className="gv-pill gv-pill-secondary"
                         style={pillSecondary}
                       >
-                        Select
+                        Edit
                       </button>
+                      {view.status === "ready" && (
+                        <a
+                          href={view.public_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="gv-pill gv-pill-primary"
+                          style={{
+                            ...pillPrimary,
+                            textDecoration: "none",
+                            display: "inline-flex",
+                          }}
+                        >
+                          Open
+                        </a>
+                      )}
                     </div>
-                    {view.status === "ready" && activeJob?.id === view.id && (
-                      <iframe
-                        title={`Preview of ${view.title}`}
-                        src={view.public_url}
-                        sandbox="allow-scripts"
-                        style={{
-                          width: "100%",
-                          minHeight: 520,
-                          border: `1px solid ${BORDER}`,
-                          background: "#fff",
-                        }}
-                      />
-                    )}
                   </article>
                 ))}
                 {views.length > 0 &&

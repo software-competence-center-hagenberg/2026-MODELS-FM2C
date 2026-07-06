@@ -31,6 +31,14 @@ CVE-2026-9538    # Archive::Tar memory exhaustion (HIGH, fix_deferred)
 CVE-2026-11822
 CVE-2026-11824
 
+# libacl/libattr: symlink traversal privilege escalation in ACL/extended
+# attribute helpers. No fixed Debian package is available for trixie yet.
+# Accepted risk: the containers do not run getfattr/setfattr/setfacl or expose
+# ACL/xattr operations over attacker-controlled paths; suppress until Debian
+# ships patched acl/attr packages.
+CVE-2026-54369   # libacl symlink traversal privilege escalation (HIGH, affected — no fix)
+CVE-2026-54371   # attr/getfattr symlink traversal privilege escalation (HIGH, affected — no fix)
+
 # zlib1g: integer overflow -> heap buffer overflow in zipOpenNewFileInZip4_6.
 # Severity: CRITICAL. Status: will_not_fix (Debian has no patched package for
 # the affected 1.2.x line; fix is in zlib >=1.3, not backported).
