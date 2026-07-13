@@ -15,6 +15,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fortawesome/react-fontawesome": "^3.4.0",
     "bootstrap": "^5.3.8",
     "dotenv": "^17.4.2",
     "ioredis": "^5.11.1",

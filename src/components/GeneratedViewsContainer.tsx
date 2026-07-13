@@ -98,16 +98,14 @@ export function GeneratedViewsContainer({ onEdit }: GeneratedViewsContainerProps
       </Card.Header>
 
       <Card.Body>
-        {error && <div className="gv-error">{error}</div>}
+        {error && <div className="bs-error">{error}</div>}
 
         {views.length === 0 ? (
-          <p className="gv-empty">No generated views yet.</p>
+          <p>No generated views yet.</p>
         ) : (
           <>
-            {/* Bootstrap Row with gutters (g-3) creates the grid structure */}
             <Row className="g-3">
               {filteredViews.map((view) => (
-                // xs={12} stacks on mobile, md={6} creates 2 columns on medium+ screens
                 <Col key={view.id} xs={12} md={6}>
                   <View view={view} onEdit={onEdit} />
                 </Col>

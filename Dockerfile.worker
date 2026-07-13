@@ -22,6 +22,7 @@ RUN npm ci --include=dev \
 
 # Copy source needed for generation (vite config, templates, validation, server modules)
 COPY server/ ./server/
+COPY public/ ./public/
 COPY src/ ./src/
 COPY AGENTS.md ./AGENTS.md
 COPY index.html ./index.html

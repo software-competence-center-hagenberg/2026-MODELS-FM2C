@@ -390,6 +390,7 @@ body {
   color: var(--c-green);
   font-size: 1.1rem;
   padding: 1rem 1.25rem;
+  margin-right: 0.5rem;
 }
 
 /* ── Progress Statuses Row ── */
@@ -488,6 +489,10 @@ body {
 .bs-events-list li {
   margin-bottom: 0.25rem;
   word-break: break-word;
+}
+
+.bs-enhance-btn {
+  margin-top: 0.5rem;
 }
 
 
@@ -645,4 +650,9 @@ body {
 
 .base-margin {
   margin: 0.2rem;
+}
+
+.gv-open-link {
+  background-color: rgba(0, 230, 0, 0.45);
+  border-color: var(--c-text);
 }

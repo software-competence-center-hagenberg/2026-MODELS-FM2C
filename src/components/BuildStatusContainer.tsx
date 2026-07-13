@@ -1,8 +1,9 @@
 import Card from 'react-bootstrap/Card'
-import ProgressBar from 'react-bootstrap/ProgressBar'
+import Form from 'react-bootstrap/Form'
 import { Col, Row } from 'react-bootstrap'
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CardHeader } from './CardHeader';
+import { MilestoneProgressBar } from './MilestoneProgressBar/MilestoneProgressBar';
 
 type GeneratedStatus =
   | "queued"
@@ -65,25 +66,13 @@ const PROGRESS_LABELS: Record<GeneratedStatus, string> = {
 
 const ANSI_ESCAPE = String.fromCharCode(27);
 
-// Mock data to visualize the log without a running backend
-const MOCK_LOG_ENTRIES = [
-  "[09:41:12] Initializing generation pipeline...",
-  "[09:41:15] Fetching dependencies...",
-  "[09:41:22] Validating configuration schema...",
-  "[09:41:30] Compiling React components...",
-  "[09:41:45] Running linter and type check...",
-  "[09:42:01] Build complete. Deploying preview...",
-  "[09:42:05] Ready for display."
-];
-
 type BuildStatusContainerProps = {
   initialJob: GeneratedView | null;
 };
 
 export function BuildStatusContainer({ initialJob }: BuildStatusContainerProps) {
   const [activeJob, setActiveJob] = useState<GeneratedView | null>(initialJob);
-  // Initialize with mock data for visualization
-  const [events, setEvents] = useState<string[]>(MOCK_LOG_ENTRIES); 
+  const [events, setEvents] = useState<string[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [enhanceText, setEnhanceText] = useState("");
@@ -93,7 +82,7 @@ export function BuildStatusContainer({ initialJob }: BuildStatusContainerProps) 
   useEffect(() => {
     if (!initialJob) return;
     setActiveJob(initialJob);
-    setEvents([]); // Clear mocks when a real job starts
+    setEvents([]);
     sseCleanupRef.current?.();
     sseCleanupRef.current = listenForJob(initialJob.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -133,15 +122,21 @@ export function BuildStatusContainer({ initialJob }: BuildStatusContainerProps) 
 
   const currentStepIndex = useMemo(() => {
     if (!activeJob) return -1;
-    if (isEnhancingFlow) {
-      return ENHANCE_PROGRESS.indexOf(activeJob.status);
-    }
-    return PROGRESS.indexOf(activeJob.status);
+    return isEnhancingFlow
+      ? ENHANCE_PROGRESS.indexOf(activeJob.status)
+      : PROGRESS.indexOf(activeJob.status);
   }, [activeJob, isEnhancingFlow]);
 
   const progressPercent = currentStepIndex >= 0
     ? Math.round(((currentStepIndex + 1) / totalSteps) * 100)
     : 0;
+
+  const milestones = useMemo(() => {
+    return currentSteps.map((status, index) => ({
+      percentage: Math.round((index / (totalSteps - 1)) * 100),
+      label: PROGRESS_LABELS[status],
+    }));
+  }, [currentSteps, totalSteps]);
 
   function listenForJob(id: string) {
     const source = new EventSource(`/api/generation-jobs/${id}/events`);
@@ -242,55 +237,41 @@ export function BuildStatusContainer({ initialJob }: BuildStatusContainerProps) 
     }
   }
 
+  const isError = activeJob?.status === "error";
+
   return (
     <Card>
       <Card.Header className="bs-header">
         <CardHeader number="2" title="Build Status" description='' />
       </Card.Header>
       <Card.Body>
-        
-        {/* 1. Job Info */}
-        <Row>
-          <Col>
-            {activeJob && (
+
+        {/* 1. Job Info - Only when active */}
+        {activeJob && (
+          <Row>
+            <Col>
               <div className="bs-job-card">
                 <p className="bs-active-job">{activeJob.title}</p>
                 <p className="bs-job-id">{activeJob.id}</p>
               </div>
-            )}
-          </Col>
-        </Row>
+            </Col>
+          </Row>
+        )}
 
-        <Row>
-          <Col>
-            <ProgressBar
-              now={progressPercent}
-              className="mb-3"
-              variant={activeJob?.status === "error" ? "danger" : "success"}
-            />
-          </Col>
-        </Row>
+        {/* 2. Progress Bar - Only when active */}
+        {activeJob && (
+          <Row>
+            <Col>
+              <MilestoneProgressBar
+                value={progressPercent}
+                milestones={milestones}
+                progressColor={isError ? 'var(--c-error)' : 'var(--c-green)'}
+              />
+            </Col>
+          </Row>
+        )}
 
-        {/* 3. Statuses */}
-        <Row>
-          <Col>
-            <div className="bs-statuses-row">
-              {currentSteps.map((status, index) => {
-                const done = index <= currentStepIndex;
-                const current = index === currentStepIndex;
-                return (
-                  <div key={status} className="bs-status-item">
-                    <span className={`bs-status-dot ${done ? "bs-status-done" : ""} ${current ? "bs-status-active" : ""}`} />
-                    <span className={`bs-status-label ${current ? "bs-status-label-active" : ""}`}>
-                      {PROGRESS_LABELS[status]}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </Col>
-        </Row>
-
+        {/* Empty state - Only when no active job */}
         {!activeJob && (
           <Row>
             <Col>
@@ -302,6 +283,7 @@ export function BuildStatusContainer({ initialJob }: BuildStatusContainerProps) 
           </Row>
         )}
 
+        {/* 3. Actions - Only when active */}
         {activeJob && (
           <Row>
             <Col>
@@ -352,20 +334,22 @@ export function BuildStatusContainer({ initialJob }: BuildStatusContainerProps) 
           </Row>
         )}
 
+        {/* 4. Enhance - Only when ready */}
         {activeJob?.status === "ready" && (
           <Row>
             <Col>
               <div className="bs-enhance">
                 <div className="bs-enhance-header">
-                  <p className="bs-enhance-title">Enhance this view</p>
-                  <p className="bs-enhance-hint">Ask for changes and regenerate</p>
+                  <p className="bs-enhance-hint">Ask for changes or enhancements and regenerate:</p>
                 </div>
-                <textarea
-                  className="bs-enhance-textarea"
+                <Form.Control
+                  as="textarea"
+                  className="dc-textarea"
                   value={enhanceText}
                   onChange={(e) => setEnhanceText(e.target.value)}
                   rows={4}
                   placeholder="Example: Add ingredient icons, show selected items as SVG, and include a price summary."
+                  style={{ resize: 'none' }}
                 />
                 <button
                   className="gv-pill gv-pill-dark bs-enhance-btn"
@@ -379,6 +363,7 @@ export function BuildStatusContainer({ initialJob }: BuildStatusContainerProps) 
           </Row>
         )}
 
+        {/* 5. Preview - Only when preview URL exists */}
         {previewUrl && (
           <Row>
             <Col>
@@ -403,6 +388,7 @@ export function BuildStatusContainer({ initialJob }: BuildStatusContainerProps) 
           </Row>
         )}
 
+        {/* 6. Error Message - Only when error exists */}
         {activeJob?.error_message && (
           <Row>
             <Col>
@@ -411,7 +397,7 @@ export function BuildStatusContainer({ initialJob }: BuildStatusContainerProps) 
           </Row>
         )}
 
-        {/* 9. Activity Log - Always visible */}
+        {/* 7. Activity Log - Always visible */}
         <div className="bs-events-panel">
           <strong className="bs-events-title">Activity log</strong>
           <ul className="bs-events-list">
