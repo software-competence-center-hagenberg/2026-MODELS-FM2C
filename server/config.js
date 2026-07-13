@@ -7,8 +7,7 @@ export const APP_ROOT = path.resolve(__dirname, '..');
 export const AGENTS_MD_PATH = path.resolve(APP_ROOT, 'AGENTS.md');
 
 export const PORT = Number.parseInt(process.env.PORT ?? '8787', 10);
-// export const MAIN_DIST_DIR = path.resolve(APP_ROOT, 'dist');
-export const MAIN_DIST_DIR = APP_ROOT;
+export const MAIN_DIST_DIR = path.resolve(APP_ROOT, 'dist');
 export const DATA_DIR = path.resolve(process.env.GENERATED_DATA_DIR ?? path.join(APP_ROOT, 'data'));
 export const WORKSPACES_DIR = path.resolve(process.env.GENERATED_WORKSPACES_DIR ?? path.join(APP_ROOT, 'generated-workspaces'));
 export const DIST_DIR = path.resolve(process.env.GENERATED_DIST_DIR ?? path.join(APP_ROOT, 'generated-dist'));
