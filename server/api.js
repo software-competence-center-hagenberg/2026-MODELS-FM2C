@@ -325,6 +325,8 @@ function normaliseMainAppPath(urlPath) {
   if (urlPath.startsWith('/assets/')) return urlPath;
   // Support logo.svg
   if (urlPath === '/logo.svg' || urlPath === 'logo.svg') return '/logo.svg';
+  // Support bg.webp
+  if (urlPath === '/bg.webp' || urlPath === 'bg.webp') return '/bg.webp';
   // Fallback to SPA
   return '/index.html';
 }
