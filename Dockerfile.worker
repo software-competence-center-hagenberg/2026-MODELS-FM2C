@@ -22,10 +22,8 @@ RUN npm ci --include=dev \
 
 # Copy source needed for generation (vite config, templates, validation, server modules)
 COPY server/ ./server/
-COPY public/bg.webp ./bg.webp
-COPY public/favicon.svg ./favicon.svg
-COPY public/icons.svg ./icons.svg
-COPY public/logo.svg ./logo.svg
+COPY public/ ./public/
+COPY public/ ./dist/
 COPY src/ ./src/
 COPY AGENTS.md ./AGENTS.md
 COPY index.html ./index.html
