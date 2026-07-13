@@ -37,7 +37,6 @@ export default defineConfig({
       "/gen": "http://localhost:8787",
       "/firefox": "http://localhost:8787",
       "/docker": "http://localhost:8787",
-      "/logo.svg": "http://localhost:8787",
     },
   },
 });
