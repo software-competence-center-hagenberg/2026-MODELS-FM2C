@@ -1,0 +1,64 @@
+# syntax=docker/dockerfile:1
+
+# Worker container — runs opencode AI agent + vite builds for generated views
+# Needs full deps including opencode and vite
+FROM node:22-trixie-slim
+
+WORKDIR /app
+
+ENV NODE_ENV=production \
+    GENERATED_DATA_DIR=/app/data \
+    GENERATED_WORKSPACES_DIR=/app/generated-workspaces \
+    GENERATED_DIST_DIR=/app/generated-dist \
+    OPENCODE_DISABLE_AUTOUPDATE=true
+
+COPY package.json package-lock.json ./
+
+# Install ALL deps (including dev) because worker runs vite builds at runtime.
+ARG OPENCODE_VERSION=latest
+RUN npm ci --include=dev \
+    && npm install -g "opencode-ai@${OPENCODE_VERSION}" \
+    && npm cache clean --force
+
+# Copy source needed for generation (vite config, templates, validation, server modules)
+COPY server/ ./server/
+COPY src/ ./src/
+COPY AGENTS.md ./AGENTS.md
+COPY index.html ./index.html
+COPY vite.generated.config.ts ./vite.generated.config.ts
+COPY tsconfig*.json ./
+
+# Install iptables for egress lockdown AND pull Debian security updates for
+# base-image packages; both images share node:22-trixie-slim.
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends iptables ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Runtime only needs `node` plus the installed opencode binary. Remove npm/npm's
+# bundled deps from the final image; npm currently carries vulnerable transitive
+# packages (for example undici CVE-2026-12151) and the worker entrypoint never
+# calls npm at runtime.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+
+# Create runtime directories; only chown the writable data dirs to node.
+# The rest of /app stays root-owned so node can READ but not WRITE server/src/etc.
+RUN mkdir -p /app/data /app/generated-workspaces /app/generated-dist \
+    /app/node_modules/.vite-temp \
+    && chown -R node:node /app/data /app/generated-workspaces /app/generated-dist /app/node_modules/.vite-temp
+# ponytail: .vite-temp is Vite's scratch dir for bundling vite.generated.config.ts;
+# without a node-writable .vite-temp it falls back to writing a .timestamp-*.mjs next
+# to the root-owned config in /app -> EACCES at runtime (node runs the generated build).
+# Only this scratch dir is delegated; /app + node_modules stay root-owned/read-only.
+
+# Egress lockdown script — runs as node + CAP_NET_ADMIN, sets iptables rules
+# before exec'ing the worker so the agent cannot reach the open internet.
+COPY server/worker-entrypoint.sh /app/server/worker-entrypoint.sh
+RUN chmod +x /app/server/worker-entrypoint.sh
+
+USER node
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "console.log('worker ok'); process.exit(0)"
+
+CMD ["/app/server/worker-entrypoint.sh"]

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "finishedAt": 1782314019458,
+  "mode": "all",
+  "passed": false,
+  "results": [
+    {
+      "name": "test",
+      "command": "npm test",
+      "code": 1,
+      "passed": false,
+      "durationMs": 312
+    },
+    {
+      "name": "lint",
+      "command": "npm run lint",
+      "code": 1,
+      "passed": false,
+      "durationMs": 20337
+    },
+    {
+      "name": "build",
+      "command": "npm run build",
+      "code": 0,
+      "passed": true,
+      "durationMs": 9426
+    }
+  ]
+}
