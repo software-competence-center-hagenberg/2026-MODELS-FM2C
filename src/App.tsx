@@ -1,4 +1,4 @@
-import { GeneratedViews } from './views/GeneratedViews/GeneratedViews';
+/*import { GeneratedViews } from './views/GeneratedViews/GeneratedViews';*/
 import { PageBody } from './components/PageBody'
 import { Sidebar } from './components/Sidebar';
 import { Container, Row, Col } from 'react-bootstrap'

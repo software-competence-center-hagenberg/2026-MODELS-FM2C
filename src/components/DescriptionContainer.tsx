@@ -21,7 +21,6 @@ type DescriptionContainerProps = {
 
 export function DescriptionContainer({
   onJobCreated,
-  onMessage,
   busy,
   setBusy,
 }: DescriptionContainerProps) {

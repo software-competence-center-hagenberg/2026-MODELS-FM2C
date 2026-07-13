@@ -3,7 +3,7 @@ import { useState } from "react";
 import { BuildStatusContainer } from "./BuildStatusContainer"
 import { DescriptionContainer } from "./DescriptionContainer"
 import { GeneratedViewsContainer } from "./GeneratedViewsContainer"
-import type { GeneratedView, GeneratedStatus } from "./GeneratedViewsContainer";
+import type { GeneratedView} from "./GeneratedViewsContainer";
 import './Style.css'
 
 export function PageBody() {
