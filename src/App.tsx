@@ -1,77 +1,27 @@
 import { GeneratedViews } from './views/GeneratedViews/GeneratedViews';
+import { PageBody } from './components/PageBody'
+import { Sidebar } from './components/Sidebar';
+import { Container, Row, Col } from 'react-bootstrap'
 
-const NAV_ITEMS = [
-  { href: '/', label: 'Configurator Chat' },
-  { href: '/docker', label: 'Docker Config' },
-  { href: '/firefox', label: 'Firefox Config' },
-];
+function App() {
 
-function TopNav() {
-  const currentPath = window.location.pathname;
   return (
-    <nav
-      style={
-        {
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 9999,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 0,
-          background: '#000',
-          borderBottom: `3px solid #00e600`,
-          padding: '0 16px',
-          height: 48,
-          fontFamily: 'system-ui, -apple-system, sans-serif',
-        } as const
-      }
-    >
-      <span
-        style={
-          {
-            color: '#00e600',
-            fontWeight: 800,
-            fontSize: 14,
-            marginRight: 24,
-            letterSpacing: '-0.02em',
-          } as const
-        }
-      >
-        fm2c
-      </span>
-      {NAV_ITEMS.map((item) => {
-        const isActive =
-          item.href === '/'
-            ? currentPath === '/'
-            : currentPath.startsWith(item.href);
-        return (
-          <a
-            key={item.href}
-            href={item.href}
-            style={
-              {
-                color: isActive ? '#00e600' : '#fff',
-                textDecoration: 'none',
-                padding: '8px 14px',
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: isActive ? 700 : 500,
-                background: isActive ? '#00e60018' : 'transparent',
-                transition: 'all 0.15s',
-                cursor: 'pointer',
-              } as const
-            }
-          >
-            {item.label}
-          </a>
-        );
-      })}
-    </nav>
-  );
+    <div className="app-wrapper">
+      <Container fluid className="p-0">
+        <Row className="g-0">
+          <Col xs={2}>
+            <Sidebar/>
+          </Col>
+          <Col xs={10}>
+            <PageBody/>
+          </Col>
+        </Row>
+      </Container>
+    </div>
+  )
 }
 
+/*
 function App() {
   return (
     <>
@@ -82,5 +32,6 @@ function App() {
     </>
   );
 }
+*/
 
 export default App;

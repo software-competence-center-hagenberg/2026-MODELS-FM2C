@@ -1,0 +1,648 @@
+/*
+ * fm2c design system
+ * ──────────────────
+ * Für Inline-Style-Overrides (React rendert Farben als style-Attribute)
+ * ist ein kleines JS-Patch nötig. Siehe Kommentar am Ende dieser Datei.
+ *
+ * Einbinden in index.html, nach dem bestehenden Stylesheet:
+ *   <link rel="stylesheet" href="/fm2c.css">
+ *
+ * Poppins einbinden (vor fm2c.css):
+ *   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+ */
+
+/* ── Tokens ── */
+:root {
+  --c-green:       #00e600;
+  --c-text:        #3c3c3b;
+  --c-muted:       #888888;
+  --c-dim:         #c5c5c4;
+  --c-error:       #e84848;
+  --c-btn-idle:    #ebebeb;
+  --c-card-border: #ebebeb;
+  --c-card-bg:     rgba(255, 255, 255, 0.70);
+  --c-card-bg-on:  rgba(255, 255, 255, 0.80);
+  --btn-h:         38px;
+  --r-card:        18px;
+  --r-btn:         999px;
+  --blur:          14px;
+}
+
+
+/* ── Basis ── */
+body {
+  font-family: 'Poppins', -apple-system, sans-serif;
+  background: #1a1c1e url('/assets/bg.webp') center / cover no-repeat;
+}
+
+* { font-family: inherit; }
+
+::-webkit-scrollbar         { width: 6px; height: 6px; }
+::-webkit-scrollbar-track   { background: transparent; }
+::-webkit-scrollbar-thumb   { background: rgba(0, 0, 0, .18); border-radius: 3px; }
+
+
+/* ── Buttons (gv-pill-*) ── */
+
+.gv-pill,
+.gv-pill-primary,
+.gv-pill-secondary,
+.gv-pill-dark,
+.gv-pill-danger {
+  position:      relative;
+  isolation:     isolate;
+  height:        var(--btn-h);
+  padding:       0 18px;
+  border-radius: var(--r-btn);
+  font-size:     13px;
+  font-weight:   400;
+  letter-spacing: .02em;
+  background:    var(--c-btn-idle);
+  border:        1.5px solid transparent;
+  color:         var(--c-dim);
+  cursor:        pointer;
+  display:       inline-flex;
+  align-items:   center;
+  gap:           6px;
+  transition:    color .25s, border-color .25s, background .25s, filter .08s;
+
+  /* Neutralisiert die globale button:hover { opacity: .9 } Regel */
+  opacity: 1 !important;
+}
+
+/* Fill-Bloom Pseudo-Element */
+.gv-pill::before,
+.gv-pill-primary::before,
+.gv-pill-secondary::before,
+.gv-pill-dark::before,
+.gv-pill-danger::before {
+  content:       '';
+  position:      absolute;
+  width:         220%;
+  height:        220%;
+  top:           50%;
+  left:          50%;
+  border-radius: 50%;
+  background:    radial-gradient(circle, var(--c-green) 30%, rgba(0,230,0,.6) 65%, transparent 100%);
+  filter:        blur(3px);
+  transform:     translate(-50%, -50%) scale(0);
+  transform-origin: center;
+  transition:    transform .35s cubic-bezier(.25, .46, .45, .94),
+                 filter .3s ease-out;
+  z-index:       -1;
+  pointer-events: none;
+}
+
+/* Hover-Zustand (aktiv) */
+.gv-pill:hover,
+.gv-pill-primary:hover,
+.gv-pill-secondary:hover,
+.gv-pill-dark:hover {
+  background:    transparent;
+  border-color:  var(--c-green);
+  color:         var(--c-text);
+  opacity:       1 !important;
+}
+
+.gv-pill:hover::before,
+.gv-pill-primary:hover::before,
+.gv-pill-secondary:hover::before,
+.gv-pill-dark:hover::before {
+  /*transform: translate(-50%, -50%) scale(1);*/
+  filter:    blur(0);
+}
+
+/* Danger-Variante */
+.gv-pill-danger::before {
+  background: radial-gradient(circle, var(--c-error) 30%, rgba(232,72,72,0) 100%);
+}
+
+.gv-pill-danger:hover {
+  background:   transparent;
+  border-color: var(--c-error);
+  color:        var(--c-error);
+  opacity:      1 !important;
+}
+
+.gv-pill-danger:hover::before {
+  /*transform: translate(-50%, -50%) scale(1);*/
+  filter:    blur(0);
+}
+
+/* Klick */
+.gv-pill:active,
+.gv-pill-primary:active,
+.gv-pill-secondary:active,
+.gv-pill-dark:active,
+.gv-pill-danger:active {
+  filter:  brightness(.80);
+  opacity: 1 !important;
+}
+
+
+/*
+ * ── Inline-Style-Patch (JS) ────────────────────────────────────────────────
+ *
+ * Die React-App schreibt Hintergrund- und Textfarben direkt als style-Attribute.
+ * CSS kann Inline-Styles nicht überschreiben. Deshalb dieses Snippet als
+ * zusätzlichen <script>-Block in index.html einsetzen – ersetzt den vorhandenen
+ * DARK-Script-Block:
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ *  <script>
+ *  (function () {
+ *    var T = {
+ *      green:   '#00e600',
+ *      text:    '#3c3c3b',
+ *      muted:   '#888888',
+ *      cardBg:  'rgba(255,255,255,0.70)',
+ *      cardOn:  'rgba(255,255,255,0.80)',
+ *      border:  '#ebebeb',
+ *      blur:    'blur(14px)',
+ *      radius:  '18px',
+ *    };
+ *
+ *    function patch(root) {
+ *      // Seiten-Hintergrund
+ *      root.querySelectorAll('div[style*="background: rgb(229"]').forEach(function(el) {
+ *        el.style.background = 'transparent';
+ *      });
+ *
+ *      // Karten
+ *      root.querySelectorAll('section').forEach(function(el) {
+ *        el.style.background         = T.cardBg;
+ *        el.style.backdropFilter     = T.blur;
+ *        el.style.webkitBackdropFilter = T.blur;
+ *        el.style.borderRadius       = T.radius;
+ *        el.style.border             = '2px solid ' + T.border;
+ *        if (!el._fm2c) {
+ *          el._fm2c = true;
+ *          el.addEventListener('mouseenter', function() {
+ *            el.style.background  = T.cardOn;
+ *            el.style.borderColor = T.green;
+ *          });
+ *          el.addEventListener('mouseleave', function() {
+ *            el.style.background  = T.cardBg;
+ *            el.style.borderColor = T.border;
+ *          });
+ *        }
+ *      });
+ *
+ *      // Weiße Hintergründe (Inputs etc.)
+ *      root.querySelectorAll('[style*="background: rgb(255, 255, 255)"]').forEach(function(el) {
+ *        if (el.tagName !== 'SECTION') el.style.background = 'rgba(244,244,244,0.9)';
+ *      });
+ *
+ *      // Textfarben
+ *      root.querySelectorAll('[style*="color: rgb(0, 0, 0)"]').forEach(function(el) {
+ *        el.style.color = T.text;
+ *      });
+ *      root.querySelectorAll('[style*="color: rgb(68, 68, 68)"]').forEach(function(el) {
+ *        el.style.color = T.muted;
+ *      });
+ *    }
+ *
+ *    var obs = new MutationObserver(function() {
+ *      var root = document.getElementById('root');
+ *      if (root && root.children.length) patch(root);
+ *    });
+ *    obs.observe(document.body, { childList: true, subtree: true, attributes: true });
+ *  })();
+ *  </script>
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * Hintergrundbild: /assets/bg.webp im public-Ordner ablegen.
+ * Logo: /assets/logo.svg – wird per React-Component eingebunden (keine Änderung nötig).
+ */
+
+ /* ── END OF ORIGINAL STYLESHEET ── */
+/* ==========================================================================
+   Reset & Global
+========================================================================== */
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+body {
+  font-family: 'Poppins', -apple-system, sans-serif;
+  background: #1a1c1e url('/bg.webp') center / cover no-repeat fixed;
+}
+
+.app-wrapper {
+  min-height: 100vh;
+}
+
+
+/* ==========================================================================
+   Sidebar
+========================================================================== */
+
+.sidebar-container {
+  height: 100%;
+  position: sticky;
+  top: 0;
+  color: var(--c-card-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-content {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-logo {
+  color: var(--c-green);
+  font-weight: 800;
+  font-size: 0.875rem;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+  margin-bottom: 1.5rem;
+  display: block;
+  transition: color 0.15s;
+}
+
+.sidebar-brand:hover {
+  color: #fff;
+}
+
+.sidebar-logo-img {
+  height: 2rem;
+  width: auto;
+  display: block;
+  transition: opacity 0.15s;
+}
+
+.sidebar-brand:hover .sidebar-logo-img {
+  opacity: 0.8;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sidebar-nav-item {
+  color: #fff;
+  text-decoration: none;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: all 0.15s;
+  display: block;
+}
+
+.sidebar-nav-item:hover {
+  color: var(--c-green);
+}
+
+.sidebar-nav-item.active {
+  color: var(--c-green);
+  font-weight: 700;
+}
+
+.sidebar-tip {
+  padding-top: 60%;
+}
+
+.sidebar-tip-toptext {
+  color: var(--c-green);
+  font-weight: 650;
+  font-size: 0.9375rem;
+}
+
+.sidebar-tip-heading {
+  color: var(--c-card-border);
+  font-weight: 600;
+}
+
+.sidebar-tip-subheading {
+  color: var(--c-muted);
+  font-size: 0.875rem;
+}
+
+
+/* ==========================================================================
+   Cards (Shared)
+========================================================================== */
+
+.card {
+  background:       var(--c-card-bg);
+  backdrop-filter:  blur(var(--blur));
+  border:           0.125rem solid var(--c-card-border);
+  border-radius:    var(--r-card);
+  color:            var(--c-text);
+  transition:       background .25s, border-color .25s;
+  margin-top: 1rem;
+  box-sizing: border-box;
+}
+
+.card:hover {
+  background:    var(--c-card-bg-on);
+  border-color:  var(--c-green);
+}
+
+.card-header {
+  background:     transparent;
+  border-bottom:  0.0625rem solid var(--c-card-border);
+  border-radius:  var(--r-card) var(--r-card) 0 0;
+  font-weight:    600;
+  font-size:      1.1rem;
+}
+
+.card-body {
+  padding: 1rem;
+  color: var(--c-muted);
+  font-size: 0.8rem;
+}
+
+
+/* ==========================================================================
+   DescriptionContainer
+========================================================================== */
+
+.dc-textarea {
+  width: 100%;
+  border: 0.0625rem solid var(--c-green);
+  padding: 0.875rem;
+  resize: none;
+  font: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+
+
+/* ==========================================================================
+   BuildStatusContainer
+========================================================================== */
+
+.number-badge {
+  background: var(--c-card-border) !important;
+  border: 0.125rem solid var(--c-green);
+  color: var(--c-green);
+  font-size: 1.1rem;
+  padding: 1rem 1.25rem;
+}
+
+/* ── Progress Statuses Row ── */
+
+.bs-statuses-row {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.bs-status-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.bs-status-dot {
+  display: block;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: #ddd;
+  transition: background 0.3s, box-shadow 0.3s;
+  flex-shrink: 0;
+}
+
+.bs-status-done {
+  background: #333;
+}
+
+.bs-status-active {
+  background: var(--c-green);
+  box-shadow: 0 0 0 0.1875rem rgba(0, 230, 0, 0.25);
+}
+
+.bs-status-label {
+  margin-top: 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 400;
+  color: #999;
+  text-align: center;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.bs-status-label-active {
+  font-weight: 700;
+  color: #000;
+}
+
+.bs-active-job {
+  font-weight: 800;
+  color: var(--c-text);
+}
+
+/* ── Activity Log Panel ── */
+
+.bs-events-panel {
+  bottom: 0;
+  background: var(--c-card-bg, rgba(255, 255, 255, 0.9));
+  border-top: 0.0625rem solid var(--c-card-border, #ebebeb);
+  padding: 0.625rem 1rem;
+  margin-top: 1.5rem;
+  min-height: 6.25rem;
+  max-height: 15.625rem;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-card, 1.125rem) var(--r-card, 1.125rem) var(--r-card, 1.125rem) var(--r-card, 1.125rem);
+}
+
+.bs-events-title {
+  font-size: 0.6875rem;
+  color: var(--c-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.bs-events-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.75rem;
+  color: var(--c-muted);
+  overflow-y: auto;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.bs-events-list li {
+  margin-bottom: 0.25rem;
+  word-break: break-word;
+}
+
+
+/* ==========================================================================
+   GeneratedViewsContainer
+========================================================================== */
+
+.gv-header-row {
+  display: flex;
+  justify-content: start;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.gv-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.gv-header-title {
+  display: block;
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.gv-header-subtitle {
+  font-size: 0.8125rem;
+  font-weight: 100;
+  color: var(--c-muted);
+}
+
+/* ── Controls Group (Search + Refresh) ── */
+
+.gv-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-shrink: 0;
+}
+
+.gv-search-wrapper {
+  position: relative;
+}
+
+.gv-search-input {
+  width: 15rem;
+  border: 0.09375rem solid var(--c-text);
+  border-radius: 1.5625rem;
+  padding: 0.5rem 0.75rem 0.5rem 2.125rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--c-text);
+  outline: none;
+  box-sizing: border-box;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.gv-search-input:focus {
+  box-shadow: 0 0 0 0.125rem var(--c-green);
+}
+
+.gv-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.gv-refresh-btn {
+  padding: 0.375rem 0.875rem;
+  font-size: 0.8125rem;
+}
+
+
+/* ==========================================================================
+   View (Generated Views Item)
+========================================================================== */
+
+.gv-view-custom {
+  background-color: transparent;
+  border: 0.0625rem solid var(--c-card-border, #ebebeb);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.2s ease;
+}
+
+.gv-view-header {
+  display: flex;
+  color: var(--c-text);
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.view-title {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1rem;
+  padding-top: 0.125rem;
+}
+
+.gv-view-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.view-description {
+  margin-bottom: 0.125rem;
+  font-size: 0.6875rem;
+  color: var(--c-muted, #666);
+  line-height: 1.4;
+}
+
+.view-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
+
+/* ==========================================================================
+   Badges (Shared)
+========================================================================== */
+
+.badge-error {
+  background-color: rgba(255, 0, 0, 0.1) !important;
+  font-size: 0.75rem;
+  font-weight: 100;
+  color: var(--c-error);
+  padding: 0.5%;
+}
+
+.badge-success {
+  background-color: rgba(0, 255, 0, 0.1) !important;
+  font-size: 0.75rem;
+  font-weight: 100;
+  color: var(--c-green);
+  padding: 0.5%;
+}
+
+
+/* ==========================================================================
+   Utils
+========================================================================== */
+
+.bs-error {
+  color: var(--c-error);
+  opacity: 75%;
+}
+
+.base-margin {
+  margin: 0.2rem;
+}

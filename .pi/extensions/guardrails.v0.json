@@ -1,9 +1,0 @@
-{
-  "pathAccess": {
-    "allowedPaths": [
-      "/dev/",
-      "/proc/*/",
-      "/proc/$pid/"
-    ]
-  }
-}
