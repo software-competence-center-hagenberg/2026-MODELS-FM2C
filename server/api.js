@@ -323,6 +323,8 @@ function normaliseMainAppPath(urlPath) {
   if (urlPath === '/' || urlPath === '') return '/index.html';
   // Support assets/ for the built app
   if (urlPath.startsWith('/assets/')) return urlPath;
+  // Support logo.svg
+  if (urlPath === '/logo.svg' || urlPath === 'logo.svg') return '/logo.svg';
   // Fallback to SPA
   return '/index.html';
 }
