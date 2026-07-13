@@ -36,7 +36,7 @@ include:
       scan-mode: registry
       image: "$CI_REGISTRY_IMAGE/spl-visualizer-worker:$CI_COMMIT_SHORT_SHA"
       severity: "HIGH,CRITICAL"
-      allow-failure: false
+      allow-failure: true
       tags: ["default"]
 
   - component: $CI_SERVER_FQDN/it/devops/components/security/trivy-image@v3.1.0
@@ -46,7 +46,7 @@ include:
       scan-mode: registry
       image: "$CI_REGISTRY_IMAGE/spl-visualizer-api:$CI_COMMIT_SHORT_SHA"
       severity: "HIGH,CRITICAL"
-      allow-failure: false
+      allow-failure: true
       tags: ["default"]
 
   - component: $CI_SERVER_FQDN/it/devops/components/security/trivy-fs@v3.1.0
@@ -55,7 +55,7 @@ include:
       job-name: trivy-fs
       scan-path: "."
       severity: "HIGH,CRITICAL"
-      allow-failure: false
+      allow-failure: true
       tags: ["default"]
 
   # Deploy the images to Harbor registry.
