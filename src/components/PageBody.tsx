@@ -9,8 +9,10 @@ import './Style.css'
 export function PageBody() {
   const [busy, setBusy] = useState(false);
   const [activeJob, setActiveJob] = useState<GeneratedView | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   function handleJobCreated(view: Record<string, unknown>) {
+    setFetchError(null); // Clear fetch error when a new job starts
     setActiveJob(view as GeneratedView);
   }
 
@@ -20,13 +22,15 @@ export function PageBody() {
 
   return (
     <Container fluid>
-      <Row className="mb-4">
+      <Row className='app-heading'>fm2c Playground</Row>
+      <Row className="mb-4 row-equal-height">
         <Col>
           <DescriptionContainer
             busy={busy}
             setBusy={setBusy}
             onJobCreated={handleJobCreated}
             onMessage={() => {}}
+            fetchError={fetchError}
           />
         </Col>
         <Col>
@@ -35,7 +39,10 @@ export function PageBody() {
       </Row>
       <Row>
         <Col>
-          <GeneratedViewsContainer onEdit={handleEdit} />
+          <GeneratedViewsContainer 
+            onEdit={handleEdit} 
+            onError={setFetchError} 
+          />
         </Col>
       </Row>
     </Container>

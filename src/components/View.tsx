@@ -1,5 +1,7 @@
-import Badge from 'react-bootstrap/Badge'
-import type { GeneratedView, GeneratedStatus } from "./GeneratedViewsContainer";
+import Badge from 'react-bootstrap/Badge';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faArrowUpRightFromSquare, faCheck } from '@fortawesome/free-solid-svg-icons';
+import type { GeneratedView, GeneratedStatus } from './GeneratedViewsContainer';
 
 type ViewProps = {
   view: GeneratedView;
@@ -27,7 +29,7 @@ export function View({ view, onEdit }: ViewProps) {
               window.scrollTo({ top: 0, behavior: "smooth" });
             }}
           >
-            Select
+            Select <FontAwesomeIcon icon={faCheck} />
           </button>
           {view.status === "ready" && (
             <a
@@ -36,7 +38,7 @@ export function View({ view, onEdit }: ViewProps) {
               rel="noreferrer"
               className="gv-pill gv-pill-primary gv-open-link"
             >
-              Open
+              Open <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
             </a>
           )}
         </div>
@@ -49,7 +51,7 @@ function StatusBadge({ status }: { status: GeneratedStatus }) {
   const isError = status === "error";
   return (
     <Badge className={`${isError ? 'badge-error' : 'badge-success'}`}>
-      {status}
+      {`${isError ? 'Error ⛌' : 'Ready ✓'}`}
     </Badge>
   );
 }

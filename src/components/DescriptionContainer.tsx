@@ -17,12 +17,14 @@ type DescriptionContainerProps = {
   onMessage: (message: string) => void;
   busy: boolean;
   setBusy: (busy: boolean) => void;
+  fetchError?: string | null;
 };
 
 export function DescriptionContainer({
   onJobCreated,
   busy,
   setBusy,
+  fetchError,
 }: DescriptionContainerProps) {
   const [prompt, setPrompt] = useState(
     `Create a deployment configurator view from these notes.\nShow selectable services, constraints, environment stages, and a concise export summary.`,
@@ -55,6 +57,11 @@ export function DescriptionContainer({
     }
   }
 
+  // Function to remove a specific file from the state
+  function removeFile(fileToRemove: File) {
+    setFiles(files.filter(f => f !== fileToRemove));
+  }
+
   return (
     <Card>
       <Card.Header>
@@ -72,44 +79,68 @@ export function DescriptionContainer({
               <Form.Label className="sr-only" htmlFor="gen-prompt">
                 Configurator description
               </Form.Label>
-              <Form.Control
-                as="textarea"
-                id="gen-prompt"
-                className="dc-textarea"
-                value={prompt}
-                onChange={(event) => setPrompt(event.target.value)}
-                rows={10}
-                placeholder="Write here..."
-              />
+              <div className="dc-textarea-wrapper">
+                <Form.Control
+                  as="textarea"
+                  id="gen-prompt"
+                  className="dc-textarea"
+                  value={prompt}
+                  onChange={(event) => setPrompt(event.target.value)}
+                  rows={7}
+                  placeholder="Write here..."
+                />
+                
+                {files.length > 0 && (
+                  <div className="dc-file-list-overlay">
+                    {files.map((file, index) => (
+                      <span 
+                        key={index} 
+                        className="dc-file-name" 
+                        title={file.name}
+                        onClick={() => removeFile(file)}
+                      >
+                        🗎 {file.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <label className="gv-pill gv-pill-secondary dc-upload-btn-overlay">
+                  +
+                  <input
+                    type="file"
+                    className="dc-upload-input"
+                    multiple
+                    accept={ACCEPTED_FILES}
+                    onChange={(event) =>
+                      setFiles(Array.from(event.target.files ?? []))
+                    }
+                  />
+                </label>
+              </div>
             </Form.Group>
           </Col>
         </Row>
-        
-        <label className="dc-upload-box">
-          <input
-            type="file"
-            className="dc-upload-input"
-            multiple
-            accept={ACCEPTED_FILES}
-            onChange={(event) =>
-              setFiles(Array.from(event.target.files ?? []))
-            }
-          />
-        </label>
-        {error && <div className="bs-error">{error}</div>}
 
-        <div className="dc-footer">
-          <p className="dc-footer-note">
-            Generated app runs in an isolated workspace.
-          </p>
-          <button
-            className="gv-pill gv-pill-primary dc-generate-btn"
-            onClick={submitJob}
-            disabled={busy || prompt.trim().length === 0}
-          >
-            {busy ? "Creating job…" : "Generate view"}
-          </button>
-        </div>
+        {error && <div className="bs-error mb-2">{error}</div>}
+        {fetchError && <div className="bs-error mb-2">{fetchError}</div>}
+
+        <Row className="dc-footer align-items-center mt-3 justify-content-between">
+          <Col xs={3}>
+            <p className="dc-footer-note mb-2">
+              Generated app runs in an isolated workspace.
+            </p>
+          </Col>
+          <Col xs={3} className="text-end">
+            <button
+              className="gv-pill gv-pill-primary dc-generate-btn"
+              onClick={submitJob}
+              disabled={busy || prompt.trim().length === 0}
+            >
+              {busy ? "Creating job…" : "Generate view ↗"}
+            </button>
+          </Col>
+        </Row>
       </Card.Body>
     </Card>
   );
