@@ -1,0 +1,76 @@
+/*
+ * GeneratedViewsContainer stylesheet
+ * ──────────────────────────────────
+ */
+
+/* ── Tokens (re-used locally) ── */
+:root {
+  --c-green:       #00e600;
+  --c-text:        #3c3c3b;
+  --c-muted:       #888888;
+}
+
+/* ==========================================================================
+   Header Row
+========================================================================== */
+
+.gv-header-row {
+  display:         flex;
+  justify-content: start;
+  align-items:     flex-start;
+  gap:             1rem;
+  flex-wrap:       wrap;
+}
+
+.gv-header-text {
+  flex:       1;
+  min-width:  0;
+}
+
+.gv-header-title {
+  display:      block;
+  margin:       0;
+  font-weight:  750;
+  font-size:    clamp(0.875rem, 1.08vw, 1.5rem);
+}
+
+.gv-header-subtitle {
+  font-size:   clamp(0.65rem, 0.68vw, 0.875rem);
+  font-weight: 100;
+  color:       var(--c-muted);
+}
+
+/* ==========================================================================
+   Controls (Search + Refresh)
+========================================================================== */
+
+.gv-search-input:focus {
+  box-shadow: 0 0 0 0.125rem var(--c-green);
+}
+
+.gv-refresh-btn {
+  padding:   0.375rem 0.875rem;
+  font-size: clamp(0.65rem, 0.68vw, 0.875rem);
+}
+
+/* ==========================================================================
+   Empty / Filtered State
+========================================================================== */
+
+.gv-no-results {
+  font-size:   clamp(0.65rem, 0.68vw, 0.875rem);
+  color:       var(--c-muted);
+  text-align:  center;
+  margin-top:  1rem;
+}
+
+
+/* ==========================================================================
+   Responsive Adjustments
+========================================================================== */
+
+@media (max-width: 992px) {
+  .gv-search-input {
+    width: 100%;
+  }
+}

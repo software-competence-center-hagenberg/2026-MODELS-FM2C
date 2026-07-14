@@ -1,0 +1,57 @@
+/*
+ * CardHeader stylesheet
+ * ─────────────────────
+ */
+
+/* ── Tokens (re-used locally) ── */
+:root {
+  --c-green:         #00e600;
+  --c-muted:         #888888;
+  --c-card-border:   #ebebeb;
+}
+
+/* ==========================================================================
+   Number Badge
+========================================================================== */
+
+.number-badge {
+  background:   var(--c-card-border) !important;
+  border:       0.125rem solid var(--c-green);
+  color:        var(--c-green);
+  font-size:    clamp(0.75rem, 0.83vw, 1.125rem);
+  padding:      1rem 1.25rem;
+  margin-right: 0.5rem;
+  margin-left:  -1rem;
+}
+
+/* ==========================================================================
+   Header Row Layout
+========================================================================== */
+
+.gv-header-row {
+  display:         flex;
+  justify-content: start;
+  align-items:     flex-start;
+  gap:             1rem;
+  flex-wrap:       wrap;
+}
+
+.gv-header-text {
+  flex:       1;
+  min-width:  0;
+}
+
+/* ── Title ── */
+.gv-header-title {
+  display:      block;
+  margin:       0;
+  font-weight:  750;
+  font-size:    clamp(0.875rem, 1.08vw, 1.5rem);
+}
+
+/* ── Subtitle / Description ── */
+.gv-header-subtitle {
+  font-size:   clamp(0.65rem, 0.68vw, 0.875rem);
+  font-weight: 100;
+  color:       var(--c-muted);
+}

@@ -1,0 +1,196 @@
+/*
+ * View component stylesheet
+ * ─────────────────────────
+ * All styles for the View (generated-views item) card
+ * and its pill / badge sub-components.
+ */
+
+/* ── Tokens (re-used locally) ── */
+:root {
+  --c-green:       #00e600;
+  --c-text:        #3c3c3b;
+  --c-muted:       #888888;
+  --c-dim:         #c5c5c4;
+  --c-error:       #e84848;
+  --c-btn-idle:    #ebebeb;
+  --c-card-border: #ebebeb;
+  --r-btn:         999px;
+  --btn-h:         38px;
+}
+
+/* ==========================================================================
+   View Card
+========================================================================== */
+
+.gv-view-custom {
+  background-color: transparent;
+  border:           0.0625rem solid var(--c-card-border);
+  border-radius:    0.5rem;
+  padding:          1rem;
+  margin-bottom:    1rem;
+  display:          flex;
+  flex-direction:   column;
+  transition:       border-color 0.2s ease;
+}
+
+.gv-view-custom:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.gv-view-selected {
+  border-color: var(--c-green) !important;
+  background-color: rgba(255, 255, 255, 0.3);
+  border-width: 2px !important;
+  border-style: solid !important;
+}
+
+.gv-view-header {
+  display:         flex;
+  color:           var(--c-text);
+  justify-content: space-between;
+  align-items:     center;
+  margin-bottom:   0.75rem;
+}
+
+.view-title {
+  margin:       0;
+  font-weight:  800;
+  font-size:    clamp(0.65rem, 0.65vw, 0.875rem);
+  padding-top:  0.125rem;
+  word-break:   break-word;
+}
+
+.gv-view-body {
+  display:        flex;
+  flex-direction: column;
+}
+
+.view-description {
+  margin-bottom: 0.125rem;
+  font-size:     clamp(0.55rem, 0.57vw, 0.75rem);
+  color:         var(--c-muted);
+  line-height:   1.4;
+}
+
+.view-actions {
+  display:         flex;
+  gap:             0.5rem;
+  justify-content: flex-end;
+  margin-top:      auto;
+  flex-wrap:       wrap;
+}
+
+/* ==========================================================================
+   Pills (gv-pill-*)
+========================================================================== */
+
+.gv-pill,
+.gv-pill-primary,
+.gv-pill-secondary,
+.gv-pill-dark,
+.gv-pill-danger {
+  position:      relative;
+  isolation:     isolate;
+  height:        var(--btn-h);
+  padding:       0 18px;
+  border-radius: var(--r-btn);
+  font-size:     clamp(12px, 0.68vw, 1rem);
+  font-weight:   400;
+  letter-spacing: .02em;
+  background:    var(--c-btn-idle);
+  border:        1.5px solid transparent;
+  color:         var(--c-dim);
+  cursor:        pointer;
+  display:       inline-flex;
+  align-items:   center;
+  gap:           6px;
+  transition:    color .25s, border-color .25s, background .25s, filter .08s;
+  opacity: 1 !important;
+}
+
+.gv-pill::before,
+.gv-pill-primary::before,
+.gv-pill-secondary::before,
+.gv-pill-dark::before,
+.gv-pill-danger::before {
+  content:       '';
+  position:      absolute;
+  width:         220%;
+  height:        220%;
+  top:           50%;
+  left:          50%;
+  border-radius: 50%;
+  background:    radial-gradient(circle, var(--c-green) 30%, rgba(0,230,0,.6) 65%, transparent 100%);
+  filter:        blur(3px);
+  transform:     translate(-50%, -50%) scale(0);
+  transform-origin: center;
+  transition:    transform .35s cubic-bezier(.25, .46, .45, .94),
+                 filter .3s ease-out;
+  z-index:       -1;
+  pointer-events: none;
+}
+
+.gv-pill:hover,
+.gv-pill-primary:hover,
+.gv-pill-secondary:hover,
+.gv-pill-dark:hover {
+  background:    transparent;
+  border-color:  var(--c-green);
+  color:         var(--c-text);
+  opacity:       1 !important;
+}
+
+.gv-pill:hover::before,
+.gv-pill-primary:hover::before,
+.gv-pill-secondary:hover::before,
+.gv-pill-dark:hover::before {
+  filter: blur(0);
+}
+
+.gv-pill-danger::before {
+  background: radial-gradient(circle, var(--c-error) 30%, rgba(232,72,72,0) 100%);
+}
+
+.gv-pill-danger:hover {
+  background:   transparent;
+  border-color: var(--c-error);
+  color:        var(--c-error);
+  opacity:      1 !important;
+}
+
+.gv-pill-danger:hover::before {
+  filter: blur(0);
+}
+
+.gv-pill:active,
+.gv-pill-primary:active,
+.gv-pill-secondary:active,
+.gv-pill-dark:active,
+.gv-pill-danger:active {
+  filter:  brightness(.80);
+  opacity: 1 !important;
+}
+
+.gv-open-link {
+  text-decoration: none;
+}
+
+/* ==========================================================================
+   Badges
+========================================================================== */
+
+.badge-error {
+  background-color: rgba(255, 0, 0, 0.1) !important;
+  font-size:        clamp(0.55rem, 0.63vw, 0.875rem);
+  font-weight:      100;
+  color:            rgba(200, 0, 0, 1);
+  padding:          0.5%;
+}
+
+.badge-success {
+  background-color: rgba(0, 230, 0, 0.2) !important;
+  font-size:        clamp(0.55rem, 0.63vw, 0.875rem);
+  font-weight:      100;
+  color:            rgba(0, 190, 0, 1);
+  padding:          0.5%;
+}

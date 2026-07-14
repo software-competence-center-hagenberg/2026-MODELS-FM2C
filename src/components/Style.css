@@ -1,14 +1,6 @@
 /*
  * fm2c design system
  * ──────────────────
- * Für Inline-Style-Overrides (React rendert Farben als style-Attribute)
- * ist ein kleines JS-Patch nötig. Siehe Kommentar am Ende dieser Datei.
- *
- * Einbinden in index.html, nach dem bestehenden Stylesheet:
- *   <link rel="stylesheet" href="/fm2c.css">
- *
- * Poppins einbinden (vor fm2c.css):
- *   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
  */
 
 /* ── Tokens ── */
@@ -28,7 +20,6 @@
   --blur:          14px;
 }
 
-
 /* ── Basis ── */
 body {
   font-family: 'Poppins', -apple-system, sans-serif;
@@ -41,101 +32,6 @@ body {
 ::-webkit-scrollbar-track   { background: transparent; }
 ::-webkit-scrollbar-thumb   { background: rgba(0, 0, 0, .18); border-radius: 3px; }
 
-
-/* ── Buttons (gv-pill-*) ── */
-
-.gv-pill,
-.gv-pill-primary,
-.gv-pill-secondary,
-.gv-pill-dark,
-.gv-pill-danger {
-  position:      relative;
-  isolation:     isolate;
-  height:        var(--btn-h);
-  padding:       0 18px;
-  border-radius: var(--r-btn);
-  font-size:     13px;
-  font-weight:   400;
-  letter-spacing: .02em;
-  background:    var(--c-btn-idle);
-  border:        1.5px solid transparent;
-  color:         var(--c-dim);
-  cursor:        pointer;
-  display:       inline-flex;
-  align-items:   center;
-  gap:           6px;
-  transition:    color .25s, border-color .25s, background .25s, filter .08s;
-
-  /* Neutralisiert die globale button:hover { opacity: .9 } Regel */
-  opacity: 1 !important;
-}
-
-/* Fill-Bloom Pseudo-Element */
-.gv-pill::before,
-.gv-pill-primary::before,
-.gv-pill-secondary::before,
-.gv-pill-dark::before,
-.gv-pill-danger::before {
-  content:       '';
-  position:      absolute;
-  width:         220%;
-  height:        220%;
-  top:           50%;
-  left:          50%;
-  border-radius: 50%;
-  background:    radial-gradient(circle, var(--c-green) 30%, rgba(0,230,0,.6) 65%, transparent 100%);
-  filter:        blur(3px);
-  transform:     translate(-50%, -50%) scale(0);
-  transform-origin: center;
-  transition:    transform .35s cubic-bezier(.25, .46, .45, .94),
-                 filter .3s ease-out;
-  z-index:       -1;
-  pointer-events: none;
-}
-
-/* Hover-Zustand (aktiv) */
-.gv-pill:hover,
-.gv-pill-primary:hover,
-.gv-pill-secondary:hover,
-.gv-pill-dark:hover {
-  background:    transparent;
-  border-color:  var(--c-green);
-  color:         var(--c-text);
-  opacity:       1 !important;
-}
-
-.gv-pill:hover::before,
-.gv-pill-primary:hover::before,
-.gv-pill-secondary:hover::before,
-.gv-pill-dark:hover::before {
-  filter:    blur(0);
-}
-
-/* Danger-Variante */
-.gv-pill-danger::before {
-  background: radial-gradient(circle, var(--c-error) 30%, rgba(232,72,72,0) 100%);
-}
-
-.gv-pill-danger:hover {
-  background:   transparent;
-  border-color: var(--c-error);
-  color:        var(--c-error);
-  opacity:      1 !important;
-}
-
-.gv-pill-danger:hover::before {
-  filter:    blur(0);
-}
-
-/* Klick */
-.gv-pill:active,
-.gv-pill-primary:active,
-.gv-pill-secondary:active,
-.gv-pill-dark:active,
-.gv-pill-danger:active {
-  filter:  brightness(.80);
-  opacity: 1 !important;
-}
 
 /*
  * ── Inline-Style-Patch (JS) ────────────────────────────────────────────────
@@ -161,12 +57,10 @@ body {
  *    };
  *
  *    function patch(root) {
- *      // Seiten-Hintergrund
  *      root.querySelectorAll('div[style*="background: rgb(229"]').forEach(function(el) {
  *        el.style.background = 'transparent';
  *      });
  *
- *      // Karten
  *      root.querySelectorAll('section').forEach(function(el) {
  *        el.style.background         = T.cardBg;
  *        el.style.backdropFilter     = T.blur;
@@ -186,12 +80,10 @@ body {
  *        }
  *      });
  *
- *      // Weiße Hintergründe (Inputs etc.)
  *      root.querySelectorAll('[style*="background: rgb(255, 255, 255)"]').forEach(function(el) {
  *        if (el.tagName !== 'SECTION') el.style.background = 'rgba(244,244,244,0.9)';
  *      });
  *
- *      // Textfarben
  *      root.querySelectorAll('[style*="color: rgb(0, 0, 0)"]').forEach(function(el) {
  *        el.style.color = T.text;
  *      });
@@ -214,9 +106,9 @@ body {
  * Logo: /assets/logo.svg – wird per React-Component eingebunden (keine Änderung nötig).
  */
 
- /* ── END OF ORIGINAL STYLESHEET ── */
+/* ── END OF ORIGINAL STYLESHEET ── */
 
- /* ==========================================================================
+/* ==========================================================================
    Reset & Global
 ========================================================================== */
 
@@ -265,17 +157,13 @@ body {
 .sidebar-logo {
   color: var(--c-green);
   font-weight: 800;
-  font-size: 0.875rem;
+  font-size: clamp(0.75rem, 0.73vw, 1rem);
   letter-spacing: -0.02em;
   text-decoration: none;
   margin-bottom: 0.5rem;
   padding: 1rem;
   display: block;
   transition: color 0.15s;
-}
-
-.sidebar-brand:hover {
-  color: #fff;
 }
 
 .sidebar-logo-img {
@@ -299,7 +187,7 @@ body {
   color: var(--c-dim);
   text-decoration: none;
   padding: 0.1rem 0.875rem;
-  font-size: 0.8125rem;
+  font-size: clamp(0.75rem, 0.68vw, 1rem);
   font-weight: 600;
   transition: all 0.15s;
   display: block;
@@ -322,7 +210,7 @@ body {
 .sidebar-tip-toptext {
   color: var(--c-green);
   font-weight: 650;
-  font-size: 0.9375rem;
+  font-size: clamp(0.75rem, 0.78vw, 1rem);
 }
 
 .sidebar-tip-heading {
@@ -332,7 +220,7 @@ body {
 
 .sidebar-tip-subheading {
   color: var(--c-muted);
-  font-size: 0.875rem;
+  font-size: clamp(0.75rem, 0.73vw, 1rem);
 }
 
 
@@ -355,7 +243,7 @@ body {
   background:     transparent;
   border-radius:  var(--r-card) var(--r-card) 0 0;
   font-weight:    750;
-  font-size:      1.3rem;
+  font-size:      clamp(0.875rem, 1.08vw, 1.5rem);
   border-bottom:  none;
   margin-bottom:  -0.5rem;
   padding-bottom: 0;
@@ -366,7 +254,7 @@ body {
   flex-direction: column;
   padding:        1rem;
   color:          var(--c-muted);
-  font-size:      0.8rem;
+  font-size:      clamp(0.65rem, 0.65vw, 0.875rem);
 }
 
 /* ── Equal Height Cards ── */
@@ -381,340 +269,9 @@ body {
   overflow-y:   auto;
 }
 
-
 /* ==========================================================================
-   DescriptionContainer
+   Search Bar
 ========================================================================== */
-
-/* ── Textarea ── */
-.dc-textarea {
-  width:        100%;
-  border:       0.0625rem solid var(--c-green);
-  padding:      0.875rem;
-  resize:       none;
-  font:         inherit;
-  outline:      none;
-  box-sizing:   border-box;
-}
-
-/* ── Textarea Wrapper (for overlays) ── */
-.dc-textarea-wrapper {
-  position: relative;
-}
-
-/* ── Overlay Upload Button ── */
-.dc-upload-btn-overlay {
-  position:       absolute;
-  box-sizing:     border-box;
-  width:          1.3rem;
-  height:         1.3rem;
-  background-color: transparent !important;
-  border:         2px solid var(--c-dim);
-  color:          var(--c-dim);
-  font-size:      1rem;
-  line-height:    1;
-  cursor:         pointer;
-  z-index:        10;
-  display:        flex;
-  align-items:    center;
-  justify-content: center;
-  bottom:         0.1rem;
-  left:           0.7rem;
-  padding:        0;
-}
-
-.dc-upload-input {
-  display: none;
-}
-
-/* ── File List Overlay ── */
-.dc-file-list-overlay {
-  position:      absolute;
-  bottom:        0.6rem;
-  left:          2.2rem;
-  right:         0.5rem;
-  display:       flex;
-  flex-direction: column;
-  gap:           0.25rem;
-  max-height:    6rem;
-  overflow-y:    auto;
-  z-index:       5;
-  pointer-events: none;
-}
-
-.dc-file-name {
-  font-size:       0.6rem;
-  color:           var(--c-muted);
-  background-color: rgba(0, 0, 0, 0.03);
-  padding:         0.25rem;
-  border-radius:   4px;
-  white-space:     nowrap;
-  overflow:        hidden;
-  text-overflow:   ellipsis;
-  display:         block;
-  width:           fit-content;
-  max-width:       100%;
-  pointer-events:  auto;
-}
-
-.dc-file-name:hover {
-  opacity:          0.4;
-  text-decoration:  line-through;
-  color:            var(--c-error);
-}
-
-
-/* ==========================================================================
-   BuildStatusContainer
-========================================================================== */
-
-.number-badge {
-  background:   var(--c-card-border) !important;
-  border:       0.125rem solid var(--c-green);
-  color:        var(--c-green);
-  font-size:    1rem;
-  padding:      1rem 1.25rem;
-  margin-right: 0.5rem;
-  margin-left:  -1rem;
-}
-
-/* ── Progress Statuses Row ── */
-.bs-statuses-row {
-  display:         flex;
-  flex-wrap:       wrap;
-  justify-content: space-between;
-  gap:             0.25rem;
-  margin-bottom:   1rem;
-}
-
-.bs-status-item {
-  display:         flex;
-  flex-direction:  column;
-  align-items:     center;
-  flex:            1 1 0;
-  min-width:       0;
-}
-
-.bs-status-dot {
-  display:      block;
-  width:        0.75rem;
-  height:       0.75rem;
-  border-radius: 50%;
-  background:   #ddd;
-  transition:   background 0.3s, box-shadow 0.3s;
-  flex-shrink:  0;
-}
-
-.bs-status-done {
-  background: #333;
-}
-
-.bs-status-active {
-  background: var(--c-green);
-  box-shadow: 0 0 0 0.1875rem rgba(0, 230, 0, 0.25);
-}
-
-.bs-status-label {
-  margin-top:    0.25rem;
-  font-size:     0.625rem;
-  font-weight:   400;
-  color:         #999;
-  text-align:    center;
-  white-space:   nowrap;
-  text-overflow: ellipsis;
-}
-
-.bs-status-label-active {
-  font-weight: 700;
-  color:       #000;
-}
-
-.bs-active-job {
-  font-weight: 800;
-  color:       var(--c-text);
-}
-
-/* ── Activity Log Panel ── */
-.bs-events-panel {
-  margin-top: auto;
-  background: var(--c-card-bg, rgba(255, 255, 255, 0.9));
-  border-top: 0.0625rem solid var(--c-card-border, #ebebeb);
-  padding: 0.625rem 1rem;
-  min-height: 6.25rem;
-  max-height: 15.625rem;
-  display: flex;
-  flex-direction: column;
-  border-radius: var(--r-card, 1.125rem);
-}
-
-.bs-events-title {
-  font-size:        0.6875rem;
-  color:            var(--c-muted);
-  text-transform:   uppercase;
-  letter-spacing:   0.08em;
-  font-weight:      600;
-  margin-bottom:    0.5rem;
-}
-
-.bs-events-list {
-  list-style:    none;
-  margin:        0;
-  padding:       0;
-  font-size:     0.75rem;
-  color:         var(--c-muted);
-  overflow-y:    auto;
-  flex-grow:     1;
-  display:       flex;
-  flex-direction: column-reverse;
-}
-
-.bs-events-list li {
-  margin-bottom: 0.25rem;
-  word-break:    break-word;
-}
-
-
-/* ==========================================================================
-   Milestone Progress Bar
-========================================================================== */
-
-.vefs-milestone-wrapper {
-  --progress-color: var(--c-green, #00e600);
-  --base-color: var(--c-btn-idle, #ebebeb);
-  --label-color: var(--c-muted, #888888);
-}
-
-.vefs-milestone-wrapper .milestone-container {
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  width: 90%;
-  height: 24px;
-  margin: 0 auto;
-}
-
-/* ── Chart (line + dots) ── */
-
-.vefs-milestone-wrapper .chart-container {
-  display: flex;
-  flex-flow: column;
-  align-items: center;
-  flex: 1 50%;
-  position: relative;
-}
-
-.vefs-milestone-wrapper .line-container {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  width: 100%;
-  height: 10px;
-}
-
-.vefs-milestone-wrapper .line {
-  align-self: center;
-  position: absolute;
-  top: 5px;
-  transform: translateY(-50%);
-  order: 1;
-  width: 100%;
-  height: 2px;
-  background-color: var(--base-color);
-}
-
-.vefs-milestone-wrapper .line.left {
-  order: 0;
-  background-color: var(--progress-color);
-}
-
-/* ── Dots ── */
-
-.vefs-milestone-wrapper .dot-container {
-  position: absolute;
-  height: 10px;
-  width: 75%;
-  left: 12.5%;
-}
-
-.vefs-milestone-wrapper .dot {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background-color: var(--base-color);
-  transform: translateX(-50%);
-  transition: all 0.25s ease-out;
-}
-
-.vefs-milestone-wrapper .dot.completed {
-  background-color: var(--progress-color);
-}
-
-/* ── Labels ── */
-
-.vefs-milestone-wrapper .label-container {
-  display: flex;
-  flex-flow: column nowrap;
-  align-items: flex-start;
-  flex: 1 50%;
-  position: relative;
-  width: 75%;
-  margin: 0 auto;
-}
-
-.vefs-milestone-wrapper .label {
-  position: relative;
-  font-size: 0.55rem;
-  font-weight: 500;
-  color: var(--label-color);
-}
-
-/* ── Milestone positioning ── */
-
-.vefs-milestone-wrapper .milestones {
-  position: absolute;
-  transform: translate(-50%, 0);
-}
-
-
-/* ==========================================================================
-   GeneratedViewsContainer
-========================================================================== */
-
-.gv-header-row {
-  display:         flex;
-  justify-content: start;
-  align-items:     flex-start;
-  gap:             1rem;
-  flex-wrap:       wrap;
-}
-
-.gv-header-text {
-  flex:       1;
-  min-width:  0;
-}
-
-.gv-header-title {
-  display:      block;
-  margin:       0;
-  font-weight:  750;
-  font-size:    1.3rem;
-}
-
-.gv-header-subtitle {
-  font-size:   0.8125rem;
-  font-weight: 100;
-  color:       var(--c-muted);
-}
-
-/* ── Controls Group (Search + Refresh) ── */
-.gv-controls {
-  display:         flex;
-  align-items:     center;
-  gap:             0.625rem;
-  flex-shrink:     0;
-  flex-wrap:       wrap;
-}
 
 .gv-search-wrapper {
   position: relative;
@@ -726,7 +283,7 @@ body {
   border:        0.09375rem solid var(--c-text);
   border-radius: 1.5625rem;
   padding:       0.5rem 0.75rem 0.5rem 0.8rem;
-  font-size:     0.7rem;
+  font-size:     clamp(0.6rem, 0.58vw, 0.75rem);
   font-weight:   400;
   color:         var(--c-text);
   outline:       none;
@@ -739,138 +296,38 @@ body {
   box-shadow: 0 0 0 0.125rem var(--c-green);
 }
 
-.gv-refresh-btn {
-  padding:   0.375rem 0.875rem;
-  font-size: 0.8125rem;
+.gv-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-wrap: nowrap;
 }
 
-.gv-list {
-  display:      grid;
-  gap:          0.75rem;
-  margin-top:   0.5rem;
+.gv-search-wrapper {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-
-/* ==========================================================================
-   View (Generated Views Item)
-========================================================================== */
-
-.gv-view-custom {
-  background-color: transparent;
-  border:           0.0625rem solid var(--c-card-border, #ebebeb);
-  border-radius:    0.5rem;
-  padding:          1rem;
-  margin-bottom:    1rem;
-  display:          flex;
-  flex-direction:   column;
-  transition:       border-color 0.2s ease;
+.gv-search-input {
+  width: 100%;
 }
 
-.gv-view-custom:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.gv-view-header {
-  display:         flex;
-  color:           var(--c-text);
-  justify-content: space-between;
-  align-items:     center;
-  margin-bottom:   0.75rem;
-}
-
-.view-title {
-  margin:       0;
-  font-weight:  800;
-  font-size:    0.8rem;
-  padding-top:  0.125rem;
-  word-break:   break-word;
-}
-
-.gv-view-body {
-  display:        flex;
-  flex-direction: column;
-}
-
-.view-description {
-  margin-bottom: 0.125rem;
-  font-size:     0.6875rem;
-  color:         var(--c-muted, #666);
-  line-height:   1.4;
-}
-
-.view-actions {
-  display:         flex;
-  gap:             0.5rem;
-  justify-content: flex-end;
-  margin-top:      auto;
-  flex-wrap:       wrap;
-}
-
-
-/* ==========================================================================
-   Badges (Shared)
-========================================================================== */
-
-.badge-error {
-  background-color: rgba(255, 0, 0, 0.1) !important;
-  font-size:        0.75rem;
-  font-weight:      100;
-  color:            rgba(200, 0, 0, 1);
-  padding:          0.5%;
-}
-
-.badge-success {
-  background-color: rgba(0, 255, 0, 0.1) !important;
-  font-size:        0.75rem;
-  font-weight:      100;
-  color:            rgba(0, 200, 0, 1);
-  padding:          0.5%;
-}
-
-
-/* ==========================================================================
-   Utilities
-========================================================================== */
-
-.bs-error {
-  color:   var(--c-error);
-  opacity: 75%;
-  word-break: break-word;
-}
-
-.base-margin {
-  margin: 0.2rem;
-}
-
-.gv-open-link {
-  background-color: rgba(0, 230, 0, 0.70);
-  color:            var(--c-text);
-  border-color:     var(--c-text);
-}
-
-
-/* ==========================================================================
-   Responsive Adjustments
-========================================================================== */
-
+/* ── Responsive ── */
 @media (max-width: 992px) {
   .gv-search-input {
     width: 100%;
   }
 }
 
+/* ==========================================================================
+   Responsive Adjustments
+========================================================================== */
+
 @media (max-width: 768px) {
-  /* Card bodies get tighter padding */
   .card-body {
     padding: 0.75rem;
   }
 
-  /* Milestone bar fills full width */
-  .vefs-milestone-wrapper .milestone-container {
-    width: 100%;
-  }
-
-  /* Sidebar compacts */
   .sidebar-content {
     padding: 0.5rem;
   }
@@ -889,34 +346,32 @@ body {
 }
 
 @media (max-width: 576px) {
-  /* Search and controls stack fully */
-  .gv-header-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
-  }
-
-  .gv-controls {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
-  }
-
-  .gv-search-input {
-    width: 100%;
-  }
-
-  /* Card body even tighter */
   .card-body {
     padding: 0.5rem;
   }
+}
 
-  /* Milestone labels hide on very small screens */
-  .vefs-milestone-wrapper .label-container {
-    display: none;
-  }
+.green-btn {
+  background-color: var(--c-green);
+  border-color: #1a1c1e;
+  color: var(--c-text);
+}
 
-  .vefs-milestone-wrapper .milestone-container {
-    height: 14px;
-  }
+.red-btn {
+  background-color: transparent !important;
+  border-color: var(--c-error);
+  color: var(--c-error);
+}
+
+.border-text-btn {
+  background-color: transparent !important;
+  border-color: var(--c-text);
+  color: var(--c-text);
+
+}
+.border-btn {
+  background-color: transparent !important;
+  border-color: var(--c-dim);
+  color: var(--c-dim);
+
 }
