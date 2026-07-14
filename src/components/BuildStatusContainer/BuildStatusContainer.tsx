@@ -218,7 +218,7 @@ export function BuildStatusContainer({ initialJob }: BuildStatusContainerProps) 
                 <div className="d-flex gap-2 mt-3">
                   <button
                     onClick={() => void refreshSingleJob(activeJob.id)}
-                    className="gv-pill gv-pill-secondary base-margin"
+                    className="gv-pill gv-pill-secondary base-margin refresh-btn"
                   >
                     Refresh status <FontAwesomeIcon icon={faArrowRotateRight} />
                   </button>

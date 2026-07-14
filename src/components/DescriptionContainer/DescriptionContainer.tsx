@@ -72,8 +72,7 @@ export function DescriptionContainer({
           description="Write what the generated view should do. Add supporting files or settings when needed."
         />
       </Card.Header>
-      <Card.Body>
-
+            <Card.Body className="dc-card-body">
         <Row>
           <Col>
             <Form.Group className="mb-3">
@@ -126,15 +125,16 @@ export function DescriptionContainer({
         {error && <div className="bs-error mb-2">{error}</div>}
         {fetchError && <div className="bs-error mb-2">{fetchError}</div>}
 
-        <Row className="dc-footer align-items-center mt-3 justify-content-between">
-          <Col xs={3}>
-            <p className="dc-footer-note mb-2">
+        {/* UPDATED FOOTER: Uses flexible columns instead of fixed xs={3} */}
+        <Row className="dc-footer align-items-center mt-3">
+          <Col className="text-start">
+            <p className="dc-footer-note mb-0">
               Generated app runs in an isolated workspace.
             </p>
           </Col>
-          <Col xs={3} className="text-end">
+          <Col xs="auto" className="text-end">
             <button
-              className="gv-pill gv-pill-primary green-button"
+              className="gv-pill gv-pill-primary green-btn"
               onClick={submitJob}
               disabled={busy || prompt.trim().length === 0}
             >

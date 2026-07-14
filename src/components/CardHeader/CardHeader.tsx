@@ -17,7 +17,7 @@ export function CardHeader({ number, title, description }: CardHeaderProps) {
             <Col xs={1}>
                 <Badge pill className="number-badge">{number}</Badge>
             </Col>
-            <Col>
+            <Col className='ml-2'>
               <Row className='gv-header-text'>{title}</Row>
               <Row className="gv-header-subtitle">{description}</Row>
             </Col>

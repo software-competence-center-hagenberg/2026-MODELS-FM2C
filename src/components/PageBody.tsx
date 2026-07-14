@@ -48,7 +48,7 @@ export function PageBody() {
   return (
     <Container fluid>
       <Row className='app-heading'>fm2c Playground</Row>
-      <Row className="mb-4 row-equal-height">
+      <Row className="mb-4 mr-3 row-equal-height">
         <Col>
           {activeJob ? (
             <EnhanceSection
@@ -70,7 +70,7 @@ export function PageBody() {
           <BuildStatusContainer initialJob={activeJob} />
         </Col>
       </Row>
-      <Row>
+      <Row className='mr-3'>
         <Col>
           <GeneratedViewsContainer
             selectedViewId={activeJob?.id}

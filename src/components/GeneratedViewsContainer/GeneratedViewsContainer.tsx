@@ -29,31 +29,6 @@ type GeneratedViewsContainerProps = {
   onError?: (error: string | null) => void;
 };
 
-const MOCK_VIEWS: GeneratedView[] = [
-  {
-    id: "mock-abc123",
-    title: "Deployment Configurator",
-    description: "A multi-stage deployment tool with service selection, environment variables, and export summary.",
-    status: "ready",
-    public_url: "https://fm2c-preview.example.com/abc123",
-    created_at: "2026-07-14T10:00:00Z",
-    updated_at: "2026-07-14T10:05:00Z",
-    expires_at: "2026-07-21T10:05:00Z",
-    error_message: null,
-  },
-  {
-    id: "mock-def456",
-    title: "Recipe Builder",
-    description: "Interactive recipe builder with ingredient icons, step-by-step SVG illustrations, and a price summary card.",
-    status: "ready",
-    public_url: "https://fm2c-preview.example.com/def456",
-    created_at: "2026-07-13T15:30:00Z",
-    updated_at: "2026-07-13T15:35:00Z",
-    expires_at: null,
-    error_message: null,
-  },
-];
-
 export function GeneratedViewsContainer({
   selectedViewId,
   onEdit,
@@ -79,7 +54,6 @@ export function GeneratedViewsContainer({
     } catch (caught) {
       const msg = caught instanceof Error ? caught.message : String(caught);
       onError?.(msg);
-      setViews(MOCK_VIEWS);
     }
   }
 
@@ -116,7 +90,7 @@ export function GeneratedViewsContainer({
             />
           </div>
           <button
-            className="gv-pill gv-pill-secondary"
+            className="gv-pill gv-pill-secondary refresh-btn"
             onClick={() => void refreshViews()}
           >
             Refresh list <FontAwesomeIcon icon={faArrowRotateRight} />
