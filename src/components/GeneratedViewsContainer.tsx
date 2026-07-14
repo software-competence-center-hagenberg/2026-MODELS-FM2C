@@ -2,17 +2,12 @@ import Card from 'react-bootstrap/Card'
 import { Col, Row } from 'react-bootstrap'
 import { useEffect, useMemo, useState } from "react";
 import { View } from "./View";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faArrowRotateRight } from '@fortawesome/free-solid-svg-icons';
 
 type GeneratedStatus =
-  | "queued"
-  | "preparing"
-  | "generating"
-  | "validating"
-  | "building"
-  | "publishing"
-  | "enhancing"
-  | "ready"
-  | "error";
+  | "queued" | "preparing" | "generating" | "validating"
+  | "building" | "publishing" | "enhancing" | "ready" | "error";
 
 type GeneratedView = {
   id: string;
@@ -30,19 +25,19 @@ export type { GeneratedView, GeneratedStatus };
 
 type GeneratedViewsContainerProps = {
   onEdit: (view: GeneratedView) => void;
+  onError?: (error: string | null) => void;
 };
 
-export function GeneratedViewsContainer({ onEdit }: GeneratedViewsContainerProps) {
+export function GeneratedViewsContainer({ onEdit, onError }: GeneratedViewsContainerProps) {
   const [views, setViews] = useState<GeneratedView[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void refreshViews();
   }, []);
 
   async function refreshViews() {
-    setError(null);
+    onError?.(null);
     try {
       const response = await fetch("/api/views");
       if (!response.ok)
@@ -52,7 +47,8 @@ export function GeneratedViewsContainer({ onEdit }: GeneratedViewsContainerProps
       const payload = (await response.json()) as { views: GeneratedView[] };
       setViews(payload.views);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught));
+      const msg = caught instanceof Error ? caught.message : String(caught);
+      onError?.(msg);
     }
   }
 
@@ -77,13 +73,13 @@ export function GeneratedViewsContainer({ onEdit }: GeneratedViewsContainerProps
             Public preview links for generated configurators.
           </p>
         </div>
-        
+
         <div className="gv-controls">
           <div className="gv-search-wrapper">
             <input
               type="text"
               className="gv-search-input"
-              placeholder="Search views by title or URL…"
+              placeholder="Search views by title or URL…               🔎︎"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -92,32 +88,24 @@ export function GeneratedViewsContainer({ onEdit }: GeneratedViewsContainerProps
             className="gv-pill gv-pill-secondary gv-refresh-btn"
             onClick={() => void refreshViews()}
           >
-            Refresh list
+            Refresh list <FontAwesomeIcon icon={faArrowRotateRight} />
           </button>
         </div>
       </Card.Header>
 
       <Card.Body>
-        {error && <div className="bs-error">{error}</div>}
+        <Row className="g-3">
+          {filteredViews.map((view) => (
+            <Col key={view.id} xs={12} md={6}>
+              <View view={view} onEdit={onEdit} />
+            </Col>
+          ))}
+        </Row>
 
-        {views.length === 0 ? (
-          <p>No generated views yet.</p>
-        ) : (
-          <>
-            <Row className="g-3">
-              {filteredViews.map((view) => (
-                <Col key={view.id} xs={12} md={6}>
-                  <View view={view} onEdit={onEdit} />
-                </Col>
-              ))}
-            </Row>
-
-            {filteredViews.length === 0 && searchQuery.trim() && (
-              <p className="gv-no-results">
-                No views match &ldquo;{searchQuery}&rdquo;
-              </p>
-            )}
-          </>
+        {filteredViews.length === 0 && searchQuery.trim() && (
+          <p className="gv-no-results">
+            No views match &ldquo;{searchQuery}&rdquo;
+          </p>
         )}
       </Card.Body>
     </Card>

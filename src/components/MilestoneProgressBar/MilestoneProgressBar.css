@@ -4,7 +4,8 @@
 
 .vefs-milestone-wrapper {
   --progress-color: var(--c-green, #00e600);
-  --base-color: #ebebeb;
+  --base-color: var(--c-btn-idle, #ebebeb);
+  --label-color: var(--c-muted, #888888);
 }
 
 .vefs-milestone-wrapper .milestone-container {
@@ -12,7 +13,7 @@
   flex-direction: column;
   position: relative;
   width: 90%;
-  height: 50px;
+  height: 24px;
   margin: 0 auto;
 }
 
@@ -31,17 +32,17 @@
   display: flex;
   align-items: center;
   width: 100%;
-  height: 21px;
+  height: 10px;
 }
 
 .vefs-milestone-wrapper .line {
   align-self: center;
   position: absolute;
-  top: 10.5px;
+  top: 5px;
   transform: translateY(-50%);
   order: 1;
   width: 100%;
-  height: 5px;
+  height: 2px;
   background-color: var(--base-color);
 }
 
@@ -54,14 +55,15 @@
 
 .vefs-milestone-wrapper .dot-container {
   position: absolute;
-  height: 21px;
-  width: 100%;
+  height: 10px;
+  width: 75%;
+  left: 12.5%;
 }
 
 .vefs-milestone-wrapper .dot {
   position: absolute;
-  width: 21px;
-  height: 21px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background-color: var(--base-color);
   transform: translateX(-50%);
@@ -79,22 +81,23 @@
   flex-flow: column nowrap;
   align-items: flex-start;
   flex: 1 50%;
+  position: relative;
+  width: 75%;
+  margin: 0 auto;
 }
 
 .vefs-milestone-wrapper .label {
   position: relative;
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--base-color);
+  font-size: 0.55rem;
+  font-weight: 500;
+  color: var(--label-color);
 }
 
-.vefs-milestone-wrapper .label.colored {
-  color: var(--progress-color);
-}
 
 /* ── Milestone positioning ── */
 
 .vefs-milestone-wrapper .milestones {
   position: absolute;
+  margin-left: 0rem;
   transform: translate(-50%, 0);
 }

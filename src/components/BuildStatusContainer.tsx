@@ -1,9 +1,11 @@
 import Card from 'react-bootstrap/Card'
-import Form from 'react-bootstrap/Form'
-import { Col, Row } from 'react-bootstrap'
+import { OverlayTrigger, Tooltip, Col, Row } from 'react-bootstrap';
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CardHeader } from './CardHeader';
 import { MilestoneProgressBar } from './MilestoneProgressBar/MilestoneProgressBar';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCircleQuestion, faEye } from '@fortawesome/free-regular-svg-icons';
+import { faArrowRotateRight } from '@fortawesome/free-solid-svg-icons';
 
 type GeneratedStatus =
   | "queued"
@@ -73,10 +75,6 @@ type BuildStatusContainerProps = {
 export function BuildStatusContainer({ initialJob }: BuildStatusContainerProps) {
   const [activeJob, setActiveJob] = useState<GeneratedView | null>(initialJob);
   const [events, setEvents] = useState<string[]>([]);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [enhanceText, setEnhanceText] = useState("");
-  const [enhancing, setEnhancing] = useState(false);
   const sseCleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
@@ -85,7 +83,7 @@ export function BuildStatusContainer({ initialJob }: BuildStatusContainerProps) 
     setEvents([]);
     sseCleanupRef.current?.();
     sseCleanupRef.current = listenForJob(initialJob.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustible-deps
   }, [initialJob?.id]);
 
   useEffect(() => {
@@ -94,23 +92,6 @@ export function BuildStatusContainer({ initialJob }: BuildStatusContainerProps) 
       sseCleanupRef.current = null;
     };
   }, []);
-
-  useEffect(() => {
-    setPreviewUrl(null);
-    setEnhanceText("");
-  }, [activeJob?.id]);
-
-  useEffect(() => {
-    if (!activeJob || previewUrl || previewLoading) return;
-    if (
-      activeJob.status === "generating" ||
-      activeJob.status === "validating" ||
-      activeJob.status === "building"
-    ) {
-      void triggerPreview(activeJob.id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeJob?.id, activeJob?.status, previewLoading, previewUrl]);
 
   const isEnhancingFlow = useMemo(
     () => activeJob?.status && ENHANCE_PROGRESS.includes(activeJob.status),
@@ -189,76 +170,33 @@ export function BuildStatusContainer({ initialJob }: BuildStatusContainerProps) 
     }
   }
 
-  async function triggerPreview(id: string) {
-    setPreviewLoading(true);
-    setPreviewUrl(null);
-    try {
-      const response = await fetch(`/api/generation-jobs/${id}/preview`, {
-        method: "POST",
-      });
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        throw new Error(payload?.error ?? "Could not create preview.");
-      }
-      const result = (await response.json()) as { preview_url: string };
-      setPreviewUrl(result.preview_url);
-    } catch {
-      // Silently fail
-    } finally {
-      setPreviewLoading(false);
-    }
-  }
-
-  async function enhanceJob(id: string) {
-    if (!enhanceText.trim()) return;
-    setEnhancing(true);
-    try {
-      const response = await fetch(`/api/generation-jobs/${id}/enhance`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ instructions: enhanceText.trim() }),
-      });
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        throw new Error(payload?.error ?? "Could not enhance view.");
-      }
-      const view = (await response.json()) as GeneratedView;
-      setActiveJob(view);
-      sseCleanupRef.current?.();
-      sseCleanupRef.current = listenForJob(view.id);
-    } catch {
-      // Silently fail
-    } finally {
-      setEnhancing(false);
-    }
-  }
-
   const isError = activeJob?.status === "error";
 
   return (
     <Card>
       <Card.Header className="bs-header">
-        <CardHeader number="2" title="Build Status" description='' />
+        <CardHeader
+          number="2"
+          title="Build status"
+          description={
+            activeJob
+              ? `Currently viewing ${activeJob.id}`
+              : "No view selected. Create one and you'll see the progress here in real time."
+          }
+        />
       </Card.Header>
       <Card.Body>
 
-        {/* 1. Job Info - Only when active */}
         {activeJob && (
           <Row>
             <Col>
               <div className="bs-job-card">
                 <p className="bs-active-job">{activeJob.title}</p>
-                <p className="bs-job-id">{activeJob.id}</p>
               </div>
             </Col>
           </Row>
         )}
 
-        {/* 2. Progress Bar - Only when active */}
         {activeJob && (
           <Row>
             <Col>
@@ -271,62 +209,22 @@ export function BuildStatusContainer({ initialJob }: BuildStatusContainerProps) 
           </Row>
         )}
 
-        {/* Empty state - Only when no active job */}
-        {!activeJob && (
-          <Row>
-            <Col>
-              <p className="bs-empty">
-                No active job yet. Create one and you'll see the progress here
-                in real time.
-              </p>
-            </Col>
-          </Row>
-        )}
-
-        {/* 3. Actions - Only when active */}
         {activeJob && (
           <Row>
             <Col>
               <div className="bs-actions">
-                {activeJob.status === "ready" && (
-                  <a
-                    href={activeJob.public_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="gv-pill gv-pill-primary bs-btn-open"
-                  >
-                    Open {activeJob.public_url}
-                  </a>
-                )}
-                {(activeJob.status === "generating" ||
-                  activeJob.status === "validating" ||
-                  activeJob.status === "building") && (
-                  <button
-                    onClick={() => void triggerPreview(activeJob.id)}
-                    disabled={previewLoading}
-                    className="gv-pill gv-pill-primary"
-                  >
-                    {previewLoading
-                      ? "Loading preview…"
-                      : previewUrl
-                        ? "Update preview"
-                        : "Show preview"}
-                  </button>
-                )}
-
-                {/* Button Group: Short Preview & Refresh Status */}
                 <div className="d-flex gap-2 mt-3">
                   <button
                     onClick={() => console.log("Short preview triggered")}
                     className="gv-pill gv-pill-secondary base-margin"
                   >
-                    Short preview
+                    Short preview <FontAwesomeIcon icon={faEye} />
                   </button>
                   <button
                     onClick={() => void refreshSingleJob(activeJob.id)}
                     className="gv-pill gv-pill-secondary base-margin"
                   >
-                    Refresh status
+                    Refresh status <FontAwesomeIcon icon={faArrowRotateRight} />
                   </button>
                 </div>
               </div>
@@ -334,61 +232,6 @@ export function BuildStatusContainer({ initialJob }: BuildStatusContainerProps) 
           </Row>
         )}
 
-        {/* 4. Enhance - Only when ready */}
-        {activeJob?.status === "ready" && (
-          <Row>
-            <Col>
-              <div className="bs-enhance">
-                <div className="bs-enhance-header">
-                  <p className="bs-enhance-hint">Ask for changes or enhancements and regenerate:</p>
-                </div>
-                <Form.Control
-                  as="textarea"
-                  className="dc-textarea"
-                  value={enhanceText}
-                  onChange={(e) => setEnhanceText(e.target.value)}
-                  rows={4}
-                  placeholder="Example: Add ingredient icons, show selected items as SVG, and include a price summary."
-                  style={{ resize: 'none' }}
-                />
-                <button
-                  className="gv-pill gv-pill-dark bs-enhance-btn"
-                  onClick={() => void enhanceJob(activeJob.id)}
-                  disabled={enhancing || !enhanceText.trim()}
-                >
-                  {enhancing ? "Enhancing…" : "Enhance view"}
-                </button>
-              </div>
-            </Col>
-          </Row>
-        )}
-
-        {/* 5. Preview - Only when preview URL exists */}
-        {previewUrl && (
-          <Row>
-            <Col>
-              <div className="bs-preview">
-                <div className="bs-preview-header">
-                  <strong className="bs-preview-title">Live preview</strong>
-                  <button
-                    className="gv-pill gv-pill-secondary bs-preview-close"
-                    onClick={() => setPreviewUrl(null)}
-                  >
-                    Close
-                  </button>
-                </div>
-                <iframe
-                  title="Preview of generated view"
-                  src={previewUrl}
-                  sandbox="allow-scripts"
-                  className="bs-preview-iframe"
-                />
-              </div>
-            </Col>
-          </Row>
-        )}
-
-        {/* 6. Error Message - Only when error exists */}
         {activeJob?.error_message && (
           <Row>
             <Col>
@@ -397,9 +240,24 @@ export function BuildStatusContainer({ initialJob }: BuildStatusContainerProps) 
           </Row>
         )}
 
-        {/* 7. Activity Log - Always visible */}
         <div className="bs-events-panel">
-          <strong className="bs-events-title">Activity log</strong>
+          <strong className="bs-events-title">
+            Activity log
+            <OverlayTrigger
+              placement="top"
+              trigger="hover"
+              overlay={
+                <Tooltip id="activity-log-tooltip">
+                  Displays real-time build steps, warnings, and errors.
+                </Tooltip>
+              }
+            >
+              <FontAwesomeIcon
+                icon={faCircleQuestion}
+                style={{ marginLeft: '0.3rem', marginBottom: '0.2rem', cursor: 'help', verticalAlign: 'middle' }}
+              />
+            </OverlayTrigger>
+          </strong>
           <ul className="bs-events-list">
             {events.map((event, index) => (
               <li key={`${event}-${index}`}>{event}</li>

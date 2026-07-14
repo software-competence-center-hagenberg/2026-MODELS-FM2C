@@ -40,7 +40,6 @@ export function MilestoneProgressBar({
       }
     >
       <div className="milestone-container">
-        {/* Chart: line + dots */}
         <div className="chart-container">
           <div className="line-container">
             <div className="line" />
@@ -62,7 +61,6 @@ export function MilestoneProgressBar({
           </div>
         </div>
 
-        {/* Labels */}
         <div className="label-container">
           {milestones.map((m) => {
             const completed = clamped >= m.percentage;
