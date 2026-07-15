@@ -135,7 +135,6 @@ When a generation job runs:
 **What AGENTS.md tells the spawned agent:**
 
 - **The SPL visualizer contract**: every generated view must let users select/deselect modules, maintain shared configuration state, and produce a downloadable config file (Helm chart, docker-compose, IaC, etc.)
-- **Three distinct views**: the agent must produce 3 structurally different configurator screens using different UI libraries and CSS approaches — not the same layout recoloured
 - **Design rules**: use strategic labels ("Mid-size sedan for urban professionals") over technical keys, never expose raw product codes, always flag strategic conflicts with inline warnings
 - **UVL modelling**: start with a UVL diagram to model modules (required, optional, alternative) before generating views
 - **MCP server access**: the agent has access to an MCP server for generating the React/Vite output application
