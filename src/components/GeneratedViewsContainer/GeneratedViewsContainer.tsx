@@ -84,10 +84,12 @@ export function GeneratedViewsContainer({
             <input
               type="text"
               className="gv-search-input"
-              placeholder="Search views by title or URL…               🔎︎"
+              placeholder="Search views by title or URL…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            {/* Added the icon as a separate overlay element */}
+            <span className="gv-search-icon">🔎︎</span>
           </div>
           <button
             className="gv-pill gv-pill-secondary refresh-btn"
