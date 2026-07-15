@@ -79,7 +79,7 @@ export function EnhanceSection({
                 onClick={handleSubmit}
                 disabled={isEnhancing || !text.trim()}
               >
-                {isEnhancing ? "Enhancing…" : "Enhance ↗"}
+                {isEnhancing ? "Enhancing…" : "Enhance"}
               </button>
             </div>
           </Col>

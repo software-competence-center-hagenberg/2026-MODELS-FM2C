@@ -19,7 +19,7 @@
   border:       0.125rem solid var(--c-green);
   color:        var(--c-green);
   font-size:    clamp(0.75rem, 0.83vw, 1.125rem);
-  padding:      1rem 1.25rem;
+  padding:      clamp(0.3rem, 1vw, 1rem) clamp(0.5rem, 1.5vw, 1.25rem);
   margin-right: 0.5rem;
   margin-left:  -1rem;
 }

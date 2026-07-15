@@ -67,6 +67,7 @@
   width:            fit-content;
   max-width:        100%;
   pointer-events:   auto;
+  cursor: pointer;
 }
 
 .dc-file-name:hover {

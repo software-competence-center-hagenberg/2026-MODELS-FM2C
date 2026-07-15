@@ -27,17 +27,20 @@ export function View({ view, onEdit, isSelected }: ViewProps) {
           {view.public_url}
         </p>
         <div className="view-actions">
-          {!isSelected && (
-            <button
-              className="gv-pill gv-pill-secondary"
-              onClick={() => {
-                onEdit(view);
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-            >
-              Select <FontAwesomeIcon icon={faCheck} />
-            </button>
-          )}
+          <button
+            className={`gv-pill ${isSelected ? 'select-disabled-btn' : 'select-btn'}`}
+            onClick={() => {
+              onEdit(view);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            disabled={isSelected}
+          >
+            {isSelected ? (
+              <>Editing <FontAwesomeIcon icon={faCheck} /></>
+            ) : (
+              <>Select <FontAwesomeIcon icon={faCheck} /></>
+            )}
+          </button>
           {view.status === "ready" && (
             <a
               href={view.public_url}

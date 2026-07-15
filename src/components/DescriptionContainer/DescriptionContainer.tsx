@@ -125,7 +125,6 @@ export function DescriptionContainer({
         {error && <div className="bs-error mb-2">{error}</div>}
         {fetchError && <div className="bs-error mb-2">{fetchError}</div>}
 
-        {/* UPDATED FOOTER: Uses flexible columns instead of fixed xs={3} */}
         <Row className="dc-footer align-items-center mt-3">
           <Col className="text-start">
             <p className="dc-footer-note mb-0">
