@@ -632,3 +632,15 @@ textarea:focus {
 .sidebar-expand-arrow {
   font-size: 0.7em;
 }
+
+.gv-filter-inactive {
+  background: transparent !important;
+  color: var(--c-error) !important;
+  border-color: var(--c-error);
+}
+
+.gv-filter-active {
+  background: transparent !important;
+  color: var(--c-muted) !important;
+  border-color: var(--c-muted);
+}

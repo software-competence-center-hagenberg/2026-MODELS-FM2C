@@ -3,7 +3,7 @@ import { Col, Row } from 'react-bootstrap'
 import { useEffect, useMemo, useState } from "react";
 import { View } from "../View/View";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowRotateRight } from '@fortawesome/free-solid-svg-icons';
+import { faArrowRotateRight, faEyeSlash, faEye } from '@fortawesome/free-solid-svg-icons';
 
 type GeneratedStatus =
   | "queued" | "preparing" | "generating" | "validating"
@@ -36,6 +36,7 @@ export function GeneratedViewsContainer({
 }: GeneratedViewsContainerProps) {
   const [views, setViews] = useState<GeneratedView[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [hideErrors, setHideErrors] = useState(false);
 
   useEffect(() => {
     void refreshViews();
@@ -58,16 +59,22 @@ export function GeneratedViewsContainer({
   }
 
   const filteredViews = useMemo(() => {
-    if (!searchQuery.trim()) return views;
+    let result = views;
+
+    if (hideErrors) {
+      result = result.filter((view) => view.status !== "error");
+    }
+
+    if (!searchQuery.trim()) return result;
     const q = searchQuery.toLowerCase();
-    return views.filter(
+    return result.filter(
       (view) =>
         view.title.toLowerCase().includes(q) ||
         view.public_url.toLowerCase().includes(q) ||
         view.id.toLowerCase().includes(q) ||
         (view.error_message ?? "").toLowerCase().includes(q),
     );
-  }, [views, searchQuery]);
+  }, [views, searchQuery, hideErrors]);
 
   return (
     <Card>
@@ -96,6 +103,14 @@ export function GeneratedViewsContainer({
             onClick={() => void refreshViews()}
           >
             Refresh list <FontAwesomeIcon icon={faArrowRotateRight} />
+          </button>
+
+          <button
+            className={`gv-pill gv-pill-secondary ${hideErrors ? 'gv-filter-active' : 'gv-filter-inactive'}`}
+            onClick={() => setHideErrors((prev) => !prev)}
+            title={hideErrors ? "Show all views" : "Hide views with errors"}
+          >
+            <FontAwesomeIcon icon={hideErrors ? faEye : faEyeSlash} />
           </button>
         </div>
       </Card.Header>
