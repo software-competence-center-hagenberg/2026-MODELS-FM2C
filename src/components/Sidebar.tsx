@@ -35,7 +35,7 @@ export function Sidebar() {
               setShowExamples((prev) => !prev);
             }}
           >
-            Explore examples
+            Explore examples&nbsp;
             <span
               className="sidebar-expand-arrow"
               style={{ transform: showExamples ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
