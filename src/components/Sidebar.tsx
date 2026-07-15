@@ -59,9 +59,9 @@ export function Sidebar() {
             })}
         </div>
         <div className="sidebar-tip">
-          <p className="sidebar-tip-toptext">Generated Configurators</p>
-          <h3 className="sidebar-tip-heading">From feature model to a configurator.</h3>
-          <p className="sidebar-tip-subheading">FM2C creates isolated React configurators, validates the generated code and makes it accessible for everyone.</p>
+          <p className="sidebar-tip-toptext">Generate Low-Code Configurators</p>
+          <h3 className="sidebar-tip-heading">From feature model to configurator.</h3>
+          <p className="sidebar-tip-subheading">FM2C generates isolated React configurators with validated code, making configuration accessible for everyone.</p>
         </div>
       </div>
     </div>
