@@ -37,10 +37,16 @@ export function GeneratedViewsContainer({
   const [views, setViews] = useState<GeneratedView[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [hideErrors, setHideErrors] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(6);
 
   useEffect(() => {
     void refreshViews();
   }, []);
+
+  // Reset pagination when filters or search query change
+  useEffect(() => {
+    setVisibleCount(6);
+  }, [searchQuery, hideErrors]);
 
   async function refreshViews() {
     onError?.(null);
@@ -75,6 +81,9 @@ export function GeneratedViewsContainer({
         (view.error_message ?? "").toLowerCase().includes(q),
     );
   }, [views, searchQuery, hideErrors]);
+
+  const visibleViews = filteredViews.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredViews.length;
 
   return (
     <Card>
@@ -117,7 +126,7 @@ export function GeneratedViewsContainer({
 
       <Card.Body>
         <Row className="g-3">
-          {filteredViews.map((view) => (
+          {visibleViews.map((view) => (
             <Col key={view.id} xs={12} md={6}>
               <View
                 view={view}
@@ -132,6 +141,21 @@ export function GeneratedViewsContainer({
           <p className="gv-no-results">
             No configurators match &ldquo;{searchQuery}&rdquo;
           </p>
+        )}
+
+        {filteredViews.length > 0 && (
+          <div className="d-flex justify-content-between align-items-center mt-1 pt-2 border-top">
+            <button
+              className="show-more"
+              onClick={() => setVisibleCount((prev) => prev + 6)}
+              style={{ display: hasMore ? 'inline-flex' : 'none' }}
+            >
+              Show more
+            </button>
+            <span className="gv-view-count">
+              Showing {visibleViews.length} out of {filteredViews.length}
+            </span>
+          </div>
         )}
       </Card.Body>
     </Card>
