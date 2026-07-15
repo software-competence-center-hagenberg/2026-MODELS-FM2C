@@ -11,34 +11,57 @@ export function PageBody() {
   const [busy, setBusy] = useState(false);
   const [activeJob, setActiveJob] = useState<GeneratedView | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  function refreshViewsList() {
+    setRefreshKey((k) => k + 1);
+  }
 
   function handleJobCreated(view: Record<string, unknown>) {
     setFetchError(null);
     setActiveJob(view as GeneratedView);
+    refreshViewsList();
   }
 
   function handleEdit(view: GeneratedView) {
+    setFetchError(null);
     setActiveJob(view);
   }
 
   function handleEnhance(instructions: string) {
+    if (!activeJob) return;
+
     setFetchError(null);
-    fetch("/api/generation-jobs", {
+    setBusy(true);
+
+    fetch(`/api/generation-jobs/${activeJob.id}/enhance`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prompt: instructions,
-        enhanceJob: activeJob?.id,
-      }),
+      body: JSON.stringify({ instructions }),
     })
       .then((response) => {
-        if (!response.ok) throw new Error("Enhancement request failed.");
+        if (!response.ok) {
+          return response.json().then((err) => {
+            throw new Error(err.error ?? "Enhancement request failed.");
+          });
+        }
         return response.json();
       })
-      .then((view) => setActiveJob(view as GeneratedView))
-      .catch((caught) =>
-        setFetchError(caught instanceof Error ? caught.message : String(caught))
-      );
+      .then((view) => {
+        setActiveJob(view as GeneratedView);
+        refreshViewsList();
+        setBusy(false);
+      })
+      .catch((caught) => {
+        setFetchError(caught instanceof Error ? caught.message : String(caught));
+        setBusy(false);
+      });
+  }
+
+  function handleJobUpdate(_view: GeneratedView) {
+    // BuildStatusContainer received an SSE update — refresh the views list
+    // so the changes are reflected in GeneratedViewsContainer
+    refreshViewsList();
   }
 
   function handleCancelEnhance() {
@@ -47,7 +70,6 @@ export function PageBody() {
 
   return (
     <Container fluid className='page'>
-      <Row className='app-heading'>fm2c Playground</Row>
       <Row className="row-equal-height">
         <Col className='body-column'>
           {activeJob ? (
@@ -67,12 +89,16 @@ export function PageBody() {
           )}
         </Col>
         <Col className='body-column'>
-          <BuildStatusContainer initialJob={activeJob} />
+          <BuildStatusContainer
+            initialJob={activeJob}
+            onJobUpdate={handleJobUpdate}
+          />
         </Col>
       </Row>
       <Row className=''>
         <Col className='body-column'>
           <GeneratedViewsContainer
+            key={refreshKey}
             selectedViewId={activeJob?.id}
             onEdit={handleEdit}
             onError={setFetchError}

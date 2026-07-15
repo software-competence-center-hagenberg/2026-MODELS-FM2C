@@ -1,0 +1,100 @@
+// UVL dependency graph — top-level categories and their key modules
+// Generated from linux-2.6.33.3.uvl feature tree
+
+digraph KernelSPL {
+  rankdir=TB;
+  node [shape=box, style=filled, fontname="Inter, sans-serif", fontsize=10];
+  edge [color="#475569"];
+
+  // Colour palette
+  root [fillcolor="#6366f1", label="Linux 2.6.33.3", shape=ellipse, fontsize=14];
+
+  // Top-level categories
+  subgraph cluster_core {
+    label="Kernel Core";
+    style=filled;
+    color="#1e293b";
+    fillcolor="#0f172a";
+    fontcolor="#94a3b8";
+    X86 [fillcolor="#334155", label="x86 Arch"];
+    ACPI [fillcolor="#334155", label="ACPI"];
+    SMP [fillcolor="#334155", label="SMP"];
+    PREEMPT [fillcolor="#334155", label="Preemption"];
+  }
+
+  subgraph cluster_storage {
+    label="Storage & Filesystems";
+    style=filled;
+    color="#1e293b";
+    fillcolor="#0f172a";
+    fontcolor="#94a3b8";
+    BLOCK [fillcolor="#06b6d4", label="Block Devices"];
+    EXT4_FS [fillcolor="#1e293b", label="EXT4"];
+    XFS_FS [fillcolor="#1e293b", label="XFS"];
+    BTRFS_FS [fillcolor="#1e293b", label="Btrfs"];
+  }
+
+  subgraph cluster_network {
+    label="Networking";
+    style=filled;
+    color="#1e293b";
+    fillcolor="#0f172a";
+    fontcolor="#94a3b8";
+    NET [fillcolor="#10b981", label="Network Stack"];
+    INET [fillcolor="#1e293b", label="IPv4"];
+    IPV6 [fillcolor="#1e293b", label="IPv6"];
+    NFS_FS [fillcolor="#1e293b", label="NFS Client"];
+  }
+
+  subgraph cluster_security {
+    label="Security";
+    style=filled;
+    color="#1e293b";
+    fillcolor="#0f172a";
+    fontcolor="#94a3b8";
+    SECURITY [fillcolor="#ec4899", label="Security Framework"];
+    CRYPTO [fillcolor="#f97316", label="Cryptography"];
+  }
+
+  subgraph cluster_debug {
+    label="Debugging & Tracing";
+    style=filled;
+    color="#1e293b";
+    fillcolor="#0f172a";
+    fontcolor="#94a3b8";
+    DEBUG_KERNEL [fillcolor="#ef4444", label="Debug Kernel"];
+    FTRACE [fillcolor="#1e293b", label="Ftrace"];
+    KPROBES [fillcolor="#1e293b", label="Kprobes"];
+  }
+
+  subgraph cluster_virtual {
+    label="Virtualisation";
+    style=filled;
+    color="#1e293b";
+    fillcolor="#0f172a";
+    fontcolor="#94a3b8";
+    KVM [fillcolor="#8b5cf6", label="KVM"];
+    VIRTIO [fillcolor="#1e293b", label="Virtio"];
+  }
+
+  // Dependencies
+  root -> X86;
+  root -> BLOCK;
+  root -> NET;
+  root -> SECURITY;
+  root -> DEBUG_KERNEL;
+  root -> KVM;
+
+  X86 -> ACPI;
+  X86 -> SMP;
+  BLOCK -> EXT4_FS;
+  BLOCK -> XFS_FS;
+  BLOCK -> BTRFS_FS;
+  NET -> INET;
+  NET -> IPV6;
+  INET -> NFS_FS;
+  SECURITY -> CRYPTO;
+  DEBUG_KERNEL -> FTRACE;
+  DEBUG_KERNEL -> KPROBES;
+  KVM -> VIRTIO;
+}

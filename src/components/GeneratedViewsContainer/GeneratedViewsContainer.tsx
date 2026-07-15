@@ -84,7 +84,7 @@ export function GeneratedViewsContainer({
             <input
               type="text"
               className="gv-search-input"
-              placeholder="Search views by title or URL…"
+              placeholder="Search configurators by title or URL"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -115,7 +115,7 @@ export function GeneratedViewsContainer({
 
         {filteredViews.length === 0 && searchQuery.trim() && (
           <p className="gv-no-results">
-            No views match &ldquo;{searchQuery}&rdquo;
+            No configurators match &ldquo;{searchQuery}&rdquo;
           </p>
         )}
       </Card.Body>

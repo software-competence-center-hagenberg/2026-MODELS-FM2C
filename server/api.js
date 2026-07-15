@@ -125,8 +125,9 @@ const server = http.createServer(async (request, response) => {
     if (preview && request.method === 'GET') {
       return servePreview(preview[1], preview[2] ?? '', response);
     }
-    // Serve static example apps (/firefox/* and /docker/*)
-    const exampleMatch = url.pathname.match(/^(\/(firefox|docker))(?:\/(.*))?$/);
+    
+    // Serve static example apps (/firefox/*, /docker/*, etc.)
+    const exampleMatch = url.pathname.match(/^(\/(sandwich|docker|firefox|linux-kernel|windows-kernel|windows-settings))(?:\/(.*))?$/);
     if (exampleMatch && request.method === 'GET') {
       return serveExample(exampleMatch[2], exampleMatch[3] ?? '', response);
     }
