@@ -89,7 +89,7 @@ export function GeneratedViewsContainer({
     <Card>
       <Card.Header className="gv-header-row">
         <div className="gv-header-text">
-          <span className="gv-header-title">Generated views</span>
+          <span className="gv-header-title">Generated configurators</span>
           <p className="gv-header-subtitle">
             Public preview links for generated configurators.
           </p>
