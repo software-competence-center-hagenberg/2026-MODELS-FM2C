@@ -3,7 +3,6 @@ import react from "@vitejs/plugin-react";
 import fs from "node:fs";
 import path from "node:path";
 
-// Plugin: copy examples/ into dist/ during build so the server can serve them.
 function copyExamplesPlugin() {
   return {
     name: "copy-examples",
@@ -27,7 +26,6 @@ function copyExamplesPlugin() {
   };
 }
 
-// https://vite.dev/config/
 export default defineConfig({
   base: "/",
   plugins: [react(), copyExamplesPlugin()],
@@ -37,6 +35,10 @@ export default defineConfig({
       "/gen": "http://localhost:8787",
       "/firefox": "http://localhost:8787",
       "/docker": "http://localhost:8787",
+      "/sandwich": "http://localhost:8787",
+      "/linux-kernel": "http://localhost:8787",
+      "/windows-kernel": "http://localhost:8787",
+      "/windows-settings": "http://localhost:8787",
     },
   },
 });
