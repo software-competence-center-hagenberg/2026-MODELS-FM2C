@@ -62,7 +62,7 @@ function StatusBadge({ status }: { status: GeneratedStatus }) {
   const isReady = status === "ready";
   return (
     <Badge className={`${isError ? 'badge-error' :'badge-success'}`}>
-      {isError ? 'Error ⛌' : isReady ? 'Ready ✓' : 'Generating ⧖'}
+      {isError ? 'Error ⛌' : isReady ? 'Ready ✓' : 'Generating... ⧖'}
     </Badge>
   );
 }
