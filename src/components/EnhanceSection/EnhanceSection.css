@@ -1,0 +1,47 @@
+/*
+ * EnhanceSection stylesheet
+ * ─────────────────────────
+ * Re-uses dc-* (textarea/footer) classes from DescriptionContainer,
+ * plus shared pill buttons and error styling.
+ */
+
+/* ── Tokens (re-used locally) ── */
+:root {
+  --c-green:         #00e600;
+  --c-text:          #3c3c3b;
+  --c-muted:         #888888;
+  --c-dim:           #c5c5c4;
+  --c-error:         #e84848;
+  --c-btn-idle:      #ebebeb;
+  --c-card-border:   #ebebeb;
+  --r-btn:           999px;
+  --btn-h:           38px;
+}
+
+/* ==========================================================================
+   EnhanceSection — Textarea
+========================================================================== */
+
+.dc-textarea {
+  width:        100%;
+  border:       0.0625rem solid var(--c-green);
+  padding:      0.875rem;
+  resize:       none;
+  font:         inherit;
+  outline:      none;
+  box-sizing:   border-box;
+}
+
+.dc-textarea-wrapper {
+  position: relative;
+}
+
+/* ==========================================================================
+   Shared Utilities
+========================================================================== */
+
+.bs-error {
+  color:   var(--c-error);
+  opacity: 75%;
+  word-break: break-word;
+}
