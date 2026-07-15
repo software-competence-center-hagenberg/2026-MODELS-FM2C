@@ -611,3 +611,24 @@ textarea:focus {
 .dc-footer-note {
   font-size: clamp(9px, 0.6vw, 0.9rem);
 }
+
+.sidebar-sub-item {
+  padding-left: 1.5rem;
+  font-weight: 300;
+  font-size: clamp(9px, 0.65vw, 0.8rem);
+}
+
+.sidebar-expand-toggle {
+  cursor: pointer;
+  display: flex;
+  justify-content: start;
+  align-items: center;
+}
+
+.sidebar-expand-toggle:hover {
+  text-decoration: none;
+}
+
+.sidebar-expand-arrow {
+  font-size: 0.7em;
+}

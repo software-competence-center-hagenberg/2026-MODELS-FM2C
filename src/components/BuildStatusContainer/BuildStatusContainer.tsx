@@ -72,9 +72,10 @@ const ANSI_ESCAPE = String.fromCharCode(27);
 
 type BuildStatusContainerProps = {
   initialJob: GeneratedView | null;
+  onJobUpdate?: (view: GeneratedView) => void;
 };
 
-export function BuildStatusContainer({ initialJob }: BuildStatusContainerProps) {
+export function BuildStatusContainer({ initialJob, onJobUpdate }: BuildStatusContainerProps) {
   const [activeJob, setActiveJob] = useState<GeneratedView | null>(initialJob);
   const [events, setEvents] = useState<string[]>([]);
   const sseCleanupRef = useRef<(() => void) | null>(null);
@@ -155,6 +156,7 @@ export function BuildStatusContainer({ initialJob }: BuildStatusContainerProps) 
       }
       if (payload.view) {
         setActiveJob(payload.view as GeneratedView);
+        onJobUpdate?.(payload.view as GeneratedView);
       }
     } catch {
       // Ignore malformed event payloads
@@ -183,7 +185,7 @@ export function BuildStatusContainer({ initialJob }: BuildStatusContainerProps) 
           description={
             activeJob
               ? `Currently viewing ${activeJob.id}`
-              : "No view selected. Create one and you'll see the progress here in real time."
+              : "No configurator selected. Create one and you'll see the progress here in real time."
           }
         />
       </Card.Header>

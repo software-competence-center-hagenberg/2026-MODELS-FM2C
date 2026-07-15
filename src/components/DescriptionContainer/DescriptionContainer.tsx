@@ -28,7 +28,7 @@ export function DescriptionContainer({
   fetchError,
 }: DescriptionContainerProps) {
   const [prompt, setPrompt] = useState(
-    `Create a deployment configurator view from these notes.\nShow selectable services, constraints, environment stages, and a concise export summary.`,
+    `Create a deployment configurator from these notes.\nShow selectable services, constraints, environment stages, and a concise export summary.`,
   );
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +69,7 @@ export function DescriptionContainer({
         <CardHeader
           number="1"
           title="Describe the configurator"
-          description="Write what the generated view should do. Add supporting files or settings when needed."
+          description="Write what the generated configurator should do. Add supporting files or settings when needed."
         />
       </Card.Header>
             <Card.Body className="dc-card-body">
@@ -137,7 +137,7 @@ export function DescriptionContainer({
               onClick={submitJob}
               disabled={busy || prompt.trim().length === 0}
             >
-              {busy ? "Creating job…" : "Generate view ↗"}
+              {busy ? "Creating job…" : "Generate ↗"}
             </button>
           </Col>
         </Row>

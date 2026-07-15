@@ -30,8 +30,8 @@ export function EnhanceSection({
       <Card.Header>
         <CardHeader
           number="3"
-          title="Enhance or modify a view"
-          description="Refine the generated view. Request layout changes, new features, or styling adjustments."
+          title="Enhance or modify a configurator"
+          description="Refine the generated configurator. Request layout changes, new features, or styling adjustments."
         />
       </Card.Header>
       <Card.Body>

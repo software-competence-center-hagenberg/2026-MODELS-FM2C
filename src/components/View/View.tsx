@@ -59,9 +59,10 @@ export function View({ view, onEdit, isSelected }: ViewProps) {
 
 function StatusBadge({ status }: { status: GeneratedStatus }) {
   const isError = status === "error";
+  const isReady = status === "ready";
   return (
-    <Badge className={`${isError ? 'badge-error' : 'badge-success'}`}>
-      {`${isError ? 'Error ⛌' : 'Ready ✓'}`}
+    <Badge className={`${isError ? 'badge-error' :'badge-success'}`}>
+      {isError ? 'Error ⛌' : isReady ? 'Ready ✓' : 'Generating ⧖'}
     </Badge>
   );
 }
