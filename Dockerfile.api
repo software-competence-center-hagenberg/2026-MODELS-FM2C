@@ -35,6 +35,8 @@ RUN npm run build \
     && mkdir -p /app/data /app/generated-workspaces /app/generated-dist \
     && chown -R node:node /app/data /app/generated-workspaces /app/generated-dist
 
+RUN chmod +x /app/scripts/reset-generated.sh
+
 # Runtime only needs `node` (CMD: node server/api.js, healthcheck: node -e).
 # Remove npm/npm's bundled deps — npm ships an unpatched picomatch 4.0.3
 # (CVE-2026-33671) that is fixed in 4.0.4 *for app code*, but npm's own pinned
